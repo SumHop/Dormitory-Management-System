@@ -1,0 +1,66 @@
+﻿<div class="search-bar">
+    <input @bind="SearchTerm" @bind:event="oninput" type="text" class="form-control search-input" placeholder="Tìm kiếm ..." aria-label="Search" aria-describedby="button-search">
+    <div class="input-group-append">
+        <button class="btn search-button" type="button" @onclick="OnSearch">Tìm kiếm</button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<string> OnSearchChanged { get; set; }
+
+    private string SearchTerm { get; set; } = string.Empty;
+
+    private async Task OnSearch()
+    {
+        await OnSearchChanged.InvokeAsync(SearchTerm);
+    }
+}
+
+
+<style>
+    .search-bar {
+        display: flex;
+        align-items: center;
+        max-width: 500px;
+        margin: auto;
+        border-radius: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .search-input {
+        flex-grow: 1;
+        border: 2px solid #00E5FF; /* Thêm viền ngoài */
+        padding: 10px 20px;
+        font-size: 16px;
+        border-radius: 25px 0 0 25px;
+        outline: none;
+        transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+    }
+
+        .search-input:focus {
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+            border-color: #0056b3; /* Thay đổi màu viền khi focus */
+        }
+
+    .search-button {
+        background-color: #007bff;
+        border: none;
+        color: #E1F5FE;
+        padding: 10px 20px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: background-color 0.3s ease-in-out;
+        border-radius: 0 25px 25px 0;
+    }
+
+        .search-button:hover {
+            background-color: #0056b3;
+        }
+
+        .search-button:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+</style>

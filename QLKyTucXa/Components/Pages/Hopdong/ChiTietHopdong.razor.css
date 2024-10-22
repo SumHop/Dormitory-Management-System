@@ -1,0 +1,43 @@
+﻿
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+}
+
+.header, .footer {
+    text-align: center;
+    font-weight: bold;
+}
+
+.content {
+    margin-top: 20px;
+}
+
+    .content p {
+        margin: 5px 0;
+    }
+
+    .content .section {
+        margin-top: 20px;
+    }
+
+.signatures {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+}
+
+    .signatures div {
+        text-align: center;
+    }
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Khoảng cách giữa checkbox và label */
+    margin-bottom: 10px; /* Khoảng cách giữa checkbox và button */
+}
+
+.btn-primary {
+    margin-left: 10px; /* Khoảng cách giữa checkbox-container và button */
+}

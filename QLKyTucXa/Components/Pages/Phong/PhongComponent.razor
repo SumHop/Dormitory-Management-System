@@ -1,0 +1,296 @@
+﻿@page "/phong"
+@inject IPhongServices Phong
+@inject ISinhVienServices SinhVienServices
+@inject IHopDongServices HopDongServices
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager navigationManager
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+@attribute [StreamRendering]
+<PageTitle>PHÒNG</PageTitle>
+
+<div style="display: flex; align-items: center; gap: 50px;">
+    <h3>DANH SÁCH PHÒNG</h3>
+    <AuthorizeView Roles="Admin, Employee">
+        <Authorized>
+            <button class="btn btn-primary" @onclick="themmoi">Thêm mới</button>
+            <br />
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<ChucNangLoc SelectedKhu="selectedKhu" SelectedTang="selectedTang" SelectedGiuong="selectedGiuong" phongs="phong" OnSelectedKhuChanged="OnSelectedKhuChanged" OnSelectedTangChanged="OnSelectedTangChanged" OnSelectedGiuongChanged="OnSelectedGiuongChanged" />
+
+@if (filteredPhong is null || filteredPhong.Count == 0)
+{
+    <h1>Không tìm thấy phòng phù hợp.</h1>
+}
+else
+{
+    <div class="row">
+        @foreach (var forecast in filteredPhong)
+        {
+            var isValid = phongValidationDictionary.TryGetValue(forecast.MaPhong, out bool valid) ? valid : false;
+            var cardColor = isValid ? "#EF5350" : "#44eaea"; // Màu sắc dựa trên tình trạng phòng
+            <div class="col-md-2">
+                <div class="card mb-2" style="background-color: @cardColor;" @onclick="() => hienthibangxacnhan(forecast)">
+                    <div class="card-body" style="color: #333;">
+                        <h5 class="card-title">@forecast.TenPhong</h5>
+                        <p class="card-text"><strong>Tầng:</strong> @forecast.Tang</p>
+                        <p class="card-text"><strong>Khu:</strong> @forecast.Khu</p>
+                        <p class="card-text"><strong>Số Người Ở:</strong> @forecast.SoNguoiO</p>
+                        <AuthorizeView Roles="Admin, Employee">
+                            <Authorized>
+                                <div class="d-flex justify-content-between">
+                                    <div class="d-flex justify-content-between">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" @onclick="@(() => Update(forecast.MaPhong))" Title="Chỉnh sửa" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="@(() => Delete(forecast.MaPhong))" Title="Xóa" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.People" Color="Color.Info" @onclick="() => ShowStudents(forecast.MaPhong)" Title="Xem sinh viên" />
+                                    </div>
+
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+@if (showStudentsModal)
+{
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog" style="max-width: 80%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">DANH SÁCH SINH VIÊN</h5>
+                    <button type="button" class="close" aria-label="Close" @onclick="() => showStudentsModal = false">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    @if (sinhviensInRoom.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: center;">MSSV</th>
+                                        <th style="text-align: center;">Họ tên</th>
+                                        <th style="text-align: center;">Lớp</th>
+                                        <th style="text-align: center;">Khoa</th>
+                                        <th style="text-align: center;">Ngày sinh</th>
+                                        <th style="text-align: center;">Địa chỉ</th>
+                                        <th style="text-align: center;">Số điện thoại</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var student in sinhviensInRoom)
+                                    {
+                                        <tr>
+                                            <td style="text-align: center;">@student.Mssv</td>
+                                            <td style="text-align: center;">@student.TenSinhVien</td>
+                                            <td style="text-align: center;">@student.Lop</td>
+                                            <td style="text-align: center;">@student.Khoa</td>
+                                            <td style="text-align: center;">@student.NgaySinh?.ToString("dd/MM/yyyy")</td>
+                                            <td style="text-align: center;">@student.DiaChi</td>
+                                            <td style="text-align: center;">@student.Sdt</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Không có sinh viên nào ở phòng này.</p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showStudentsModal = false">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+<Delete @rendermode="InteractiveServer" xacnhan="xacnhanxoa" OnCancel="CancelDelete" OnOK="okDelete"></Delete>
+<AuthorizeView Roles="User">
+    <Authorized>
+        <Xacnhandatphong @rendermode="InteractiveServer" capnhatmaphong="capnhatmaphong" id="@id" user="user" hopdong="hopdong" sinhvien="sinhvien" phongValidationDictionary="phongValidationDictionary" selectedPhong="selectedPhong" showBookingModal="bienhienthixacnhandatphong" ConfirmBooking="ConfirmBooking" CloseModal="CloseModal"></Xacnhandatphong>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private List<Phong> phong = new List<Phong>();
+    private List<Phong> filteredPhong = new List<Phong>();
+    private string? selectedKhu, selectedTang, selectedGiuong, idToDelete;
+    private bool xacnhanxoa = false;
+    private bool bienhienthixacnhandatphong = false;
+    private Phong? selectedPhong;
+    private Phong? layphongmuonxoa;
+    private ClaimsPrincipal? user;
+    private Hopdong? hopdong = new Hopdong();
+    private Sinhvien? sinhvien = new Sinhvien();
+    string? id;
+    Dictionary<string, bool> phongValidationDictionary = new Dictionary<string, bool>();
+
+    private List<Sinhvien> sinhviensInRoom = new List<Sinhvien>();
+    private bool showStudentsModal = false; // Flag to control modal visibility
+
+    private async Task ShowStudents(string maPhong)
+    {
+        // Fetch the list of students in the specified room
+        sinhviensInRoom = await SinhVienServices.GetSinhVienByPhongAsync(maPhong);
+
+        // Optionally, if you need to display room information
+        if (sinhviensInRoom.Any())
+        {
+            foreach (var student in sinhviensInRoom)
+            {
+                var contract = student.Hopdongs.FirstOrDefault(h => h.MaPhong == maPhong);
+                if (contract != null)
+                {
+                    // Here, you can access room info if needed
+                    // e.g., student.MaPhong = contract.MaPhong; (if you have that property)
+                }
+            }
+        }
+
+        showStudentsModal = true; // Show the modal
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Lấy thông tin người dùng hiện tại từ AuthenticationStateProvider
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        if (!user.IsInRole("Admin"))
+        {
+            var claim = user.FindFirst(ClaimTypes.NameIdentifier);
+            if (claim != null)
+            {
+                sinhvien = await SinhVienServices.GetByIdUserAsync(claim.Value);
+                if (sinhvien != null)
+                {
+                    hopdong = await HopDongServices.GetHopDongByMssvAsync(sinhvien.Mssv);
+                }
+            }
+            //lấy SoHopDong cần nhập nhật thông qua URL
+            var uri = navigationManager.ToAbsoluteUri(navigationManager.Uri);
+            if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("SoHopdong", out var phongIdValue))
+                id = phongIdValue;
+            else
+                id = null; // Đặt lại id nếu không có query parameter
+        }
+        phong = await Phong.GetPhongAsync();
+
+        foreach (var p in phong)
+        {
+            bool isValid = await Phong.IsSoGiuongEqualSoNguoiOAsync(p.MaPhong);
+            phongValidationDictionary[p.MaPhong] = isValid;
+        }
+        filteredPhong = phong; // Khởi tạo danh sách lọc bằng toàn bộ danh sách
+    }
+
+    private void ApplyFilters()
+    {
+        filteredPhong = phong.Where(p =>
+            (string.IsNullOrEmpty(selectedKhu) || p.Khu == selectedKhu) &&
+            (string.IsNullOrEmpty(selectedTang) || p.Tang == selectedTang) &&
+            (string.IsNullOrEmpty(selectedGiuong) || p.SoGiuong == int.Parse(selectedGiuong))
+        ).ToList();
+    }
+
+    private void OnSelectedKhuChanged(string? khu)
+    {
+        selectedKhu = khu;
+        ApplyFilters();
+    }
+
+    private void OnSelectedTangChanged(string? tang)
+    {
+        selectedTang = tang;
+        ApplyFilters();
+    }
+
+    private void OnSelectedGiuongChanged(string? giuong)
+    {
+        selectedGiuong = giuong;
+        ApplyFilters();
+    }
+
+    private void hienthibangxacnhan(Phong phong)
+    {
+        selectedPhong = phong;
+        bienhienthixacnhandatphong = true;
+    }
+
+    private void CloseModal()
+    {
+        bienhienthixacnhandatphong = false;
+        selectedPhong = null;
+    }
+
+    private async Task capnhatmaphong()
+    {
+        Snackbar.Add("Cập nhật mã phòng thành công!", Severity.Success);
+        await Task.Delay(1500);
+        hopdong.MaPhong = selectedPhong?.MaPhong;
+        await HopDongServices.UpdatePhongAsync(hopdong);
+        id = null;
+        navigationManager.NavigateTo($"/");
+        bienhienthixacnhandatphong = false;
+    }
+
+    private void ConfirmBooking()
+    {
+        navigationManager.NavigateTo($"/chitiethopdong?phongId={selectedPhong?.MaPhong}");
+        bienhienthixacnhandatphong = false;
+    }
+
+    private void themmoi() => navigationManager.NavigateTo("/Addphong");
+
+    private void Update(string id) => navigationManager.NavigateTo($"/Addphong/{id}");
+
+    private void Delete(string id)
+    {
+        idToDelete = id;
+        xacnhanxoa = true;
+    }
+
+    private void CancelDelete() => xacnhanxoa = false;
+
+    private async Task okDelete()
+    {
+        if (!string.IsNullOrEmpty(idToDelete))
+        {
+            layphongmuonxoa = await Phong.GetPhongByIdAsync(idToDelete);
+            if (layphongmuonxoa?.SoNguoiO != null && layphongmuonxoa.SoNguoiO > 0)
+            {
+                Snackbar.Add("Không thể xóa phòng đã có sinh siên ở!", Severity.Warning, config =>
+                {
+                    config.VisibleStateDuration = 400;
+                    config.HideTransitionDuration = 100;
+                    config.ShowTransitionDuration = 500;
+                });
+            }
+            else
+            {
+                Snackbar.Add("xóa thành công!", Severity.Success, config =>
+                {
+                    config.VisibleStateDuration = 400;
+                    config.HideTransitionDuration = 100;
+                    config.ShowTransitionDuration = 500;
+                });
+                await Task.Delay(1000);
+                await Phong.DeletePhongAsync(idToDelete);
+                xacnhanxoa = false;
+                phong = await Phong.GetPhongAsync();
+                ApplyFilters();
+            }
+        }
+    }
+}

@@ -1,0 +1,189 @@
+﻿@page "/hoadonthongthuong"
+@inject IHoaDonServices HoaDonServices
+@inject IDichVuServices DichVuServices
+@inject INhanVienServices NhanVienServices
+@inject IHopDongServices HopDongServices
+@inject ISinhVienServices SinhVienServices
+@inject NavigationManager navigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+<PageTitle>HÓA ĐƠN THÔNG THƯỜNG</PageTitle>
+<div class="d-flex justify-content-between">
+    <h3 style="margin: 0;">DANH SÁCH HÓA ĐƠN - THÔNG THƯỜNG</h3>
+    <MudButton Variant="Variant.Filled" OnClick="themmoi" Color="Color.Primary">Tạo Mới</MudButton>
+</div>
+@if (isAddingNew)
+{
+    <TaoHD bienkiemtra="isAddingNew" kiemtraloaihoadon="true" OnSave="LuuHD" ThoatVaSave="CancelDelete">
+    </TaoHD>
+}
+
+@if (bienthemsp)
+{
+    <ThemDV bienmemaydi="bienthemsp" kiemtraloaihoadon="true" dichvu="dichvu" OnSaveCTHD="luuCTHD" ThoatVaSave="CancelDelete"></ThemDV>
+}
+
+@if (hienthiDv)
+{
+    <div @onclick="() => hienthiDv = false">
+        <HienthiDV @rendermode="InteractiveServer" xoaDV="xoaDV" kiemtraloaihoadon="true" Chophepchinh="hienthiDv" SaveEditCallback="OnSaveEdit" haodon="haodon" dichvu="dichvu" DvtheoMaHd="DvtheoMaHd"></HienthiDV>
+    </div>
+}
+
+@if (haodon is null)
+{
+    <div class="sv-item">  Loading danh sách. chờ xí...   </div>
+}
+else
+{
+    <MudTable Items="@haodon" Hover="true" Breakpoint="Breakpoint.Sm" Style="background-color:#D7CCC8;">
+        <ColGroup>
+            <col style="width:90px;" />
+            <col style="width:200px;" />
+            <col style="width:130px;" />
+            <col style="width:90px;" />
+            <col style="width:300px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Ngày Lập</MudTh>
+            <MudTh>Phương Thức ThanhToán</MudTh>
+            <MudTh>Trạng Thái</MudTh>
+            <MudTh>Dịch Vụ</MudTh>
+            <MudTh>Thao Tác</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.NgayLapHd?.ToString("dd/MM/yyyy")</MudTd>
+            <MudTd>@context.PhuongThucThanhToan</MudTd>
+            <MudTd>@context.TrangThai</MudTd>
+            <MudTd>
+                <button class="btn bg-light" @onclick="@(() => hienthi(context.MaHd))">ChiTiết</button>
+            </MudTd>
+            <MudTd>
+                <button class="btn btn-info" @onclick="@(() => themsp(context.MaHd))">Thêm D.Vụ</button>
+@*                 <button class="btn btn-secondary" @onclick="@(() => Update(context.MaHd))">Sửa</button> *@
+                <button class="btn btn-danger" @onclick="@(() => Delete(context.MaHd))">Xóa</button>
+                <MudButton Variant="Variant.Filled" @onclick="@(() => thanhtoan(context))" Color="Color.Warning">ThanhToán</MudButton>
+                @* <img src="/image/QR.png" style="max-height:5rem;" /> *@
+                <MudSnackbarProvider />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+<Delete @rendermode="InteractiveServer" xacnhan="xacnhanxoa" OnCancel="CancelDelete" OnOK="okDelete"></Delete>
+@code {
+    private List<Hoadon> haodon = new List<Hoadon>();
+    private Hoadon hoadon1 = new Hoadon();
+    private Nhanvien nhanvien = new Nhanvien();
+    private List<Dichvu> dichvu = new List<Dichvu>();   
+    private List<Chitiethoadon> DvtheoMaHd = new List<Chitiethoadon>();
+    private Chitiethoadon bienluuCTHD = new Chitiethoadon();
+    private List<Hopdong> cachopdong = new List<Hopdong>();
+    private string? idToDelete;
+    private bool xacnhanxoa = false;
+    private bool isAddingNew = false;
+    private bool bienthemsp = false;
+    private bool hienthiDv = false;
+    private ClaimsPrincipal? user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        haodon = await HoaDonServices.GetHoaDonThongThuongAsync();
+        cachopdong = await HopDongServices.GetPhongAsync();
+        dichvu = await DichVuServices.GetDichvuAsync();
+        nhanvien = await NhanVienServices.GetnhavienByIduserAsync(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+    }
+
+    private async Task OnSaveEdit(Chitiethoadon chiTietHoaDon)
+    {
+        if (chiTietHoaDon != null)
+        {
+            await HoaDonServices.UpdateChiTietHoaDonAsync(chiTietHoaDon);
+            Snackbar.Add("Thông tin đã được cập nhật!", Severity.Success);
+        }
+    }
+
+    private async Task thanhtoan(Hoadon haodonn)
+    {
+        Snackbar.Add("Đã thanh toán thành công!", Severity.Success, options =>
+        {
+            options.VisibleStateDuration = 2000; 
+        });
+        haodonn.TrangThai = "Đã thanh toán";
+        await HoaDonServices.UpdateHoaDonAsync(haodonn);
+        haodon = await HoaDonServices.GetHoaDonThongThuongAsync();
+    }
+
+    private async Task xoaDV(Chitiethoadon chiTietHoaDon)
+    {
+        if (chiTietHoaDon != null)
+            await HoaDonServices.DeleteChiTietHoaDonAsync(chiTietHoaDon.MaHd, chiTietHoaDon.MaDv);
+
+        DvtheoMaHd = await HoaDonServices.GetChiTietHoaDonByMaHDAsync(chiTietHoaDon.MaHd);
+    }
+
+    private async Task LuuHD(Hoadon data)
+    {
+        hoadon1.MaHd = Guid.NewGuid().ToString();
+        hoadon1.NgayLapHd = DateOnly.FromDateTime(DateTime.Now);
+        hoadon1.PhuongThucThanhToan = data.PhuongThucThanhToan;
+        hoadon1.TrangThai = "Đang thanh toán";
+        hoadon1.IdnhanVien = nhanvien.IdnhanVien;
+        await HoaDonServices.AddHoaDonAsync(hoadon1);
+        Snackbar.Add("Hóa đơn đã được tạo thành công!", Severity.Success);
+        isAddingNew = false;
+        haodon = await HoaDonServices.GetHoaDonThongThuongAsync();
+    }
+
+    private async Task luuCTHD(Chitiethoadon dt)
+    {
+        bienluuCTHD.MaDv = dt.MaDv;
+        bienluuCTHD.ChiSoDau = dt.ChiSoDau;
+        bienluuCTHD.ChiSoCuoi = dt.ChiSoCuoi;
+        bienluuCTHD.SoLuong = dt.SoLuong;
+        await HoaDonServices.AddChiTietHoaDonAsync(bienluuCTHD);
+        bienthemsp = false;
+    }
+    private void themmoi() => isAddingNew = true;
+
+    //private void Update(string id) => navigationManager.NavigateTo($"/Addhoadon/{id}");
+
+    private void Delete(string id)
+    {
+        idToDelete = id;
+        xacnhanxoa = true;
+    }
+
+    private void CancelDelete()
+    {
+        xacnhanxoa = false;
+        isAddingNew = false;
+        bienthemsp = false;
+    }
+    private async Task okDelete()
+    {
+        Snackbar.Add("xóa thành công!", Severity.Success);
+        await Task.Delay(700);
+        if (!string.IsNullOrEmpty(idToDelete))
+        {
+            await HoaDonServices.DeleteToanBoCTHDAsync(idToDelete);
+            await HoaDonServices.DeleteHoaDonAsync(idToDelete);
+            haodon = await HoaDonServices.GetHoaDonAsync();
+            xacnhanxoa = false;
+        }
+    }
+    private async Task hienthi(string id)
+    {
+        DvtheoMaHd = await HoaDonServices.GetChiTietHoaDonByMaHDAsync(id);
+        hienthiDv = true;
+    }
+
+    void themsp(string id)
+    {
+        bienluuCTHD.MaHd = id;
+        bienthemsp = true;
+    }
+}

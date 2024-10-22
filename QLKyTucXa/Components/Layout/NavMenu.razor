@@ -1,0 +1,161 @@
+﻿@* //Menu ngang 
+<nav class="navbar navbar-light bg-light">
+    <a class="navbar-brand" href="#">Navbar</a>
+</nav>
+ *@
+
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Hệ thống quản lý kí túc xá</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="sinhvien">
+                        <MudIcon Icon="@Icons.Material.Filled.Diversity3" Class="me-2" /> <span>Sinh Viên</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="nhanvien">
+                        <MudIcon Icon="@Icons.Material.Filled.Engineering" Class="me-2" /> <span>Nhân Viên</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="taikhoan">
+                        <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="me-2" /> <span> Tài Khoản</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="phong">
+                        <MudIcon Icon="@Icons.Material.Filled.BedroomChild" Class="me-2" /> <span>Phòng</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="dichvu">
+                        <MudIcon Icon="@Icons.Material.Filled.ProductionQuantityLimits" Class="me-2" /> <span>Dịch Vụ</span>
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Employee">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="dichvu">
+                        <MudIcon Icon="@Icons.Material.Filled.ProductionQuantityLimits" Class="me-2" /> <span>Dịch Vụ</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="hoadonbatbuoc">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Class="me-2" /> <span>HoaĐơn - Bắt Buộc</span> <!-- Thay đổi icon -->
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="hoadonthongthuong">
+                        <MudIcon Icon="@Icons.Material.Filled.MonetizationOn" Class="me-2" /> <span>HoaĐơn - Thông Thường</span> <!-- Thay đổi icon -->
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="hopdong">
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="me-2" /> <span>Duyệt Hợp Đồng</span> <!-- Thay đổi icon -->
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="phong">
+                        <MudIcon Icon="@Icons.Material.Filled.Bed" Class="me-2" /> <span>Phòng</span> <!-- Thay đổi icon -->
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="nghiemthusuco">
+                        <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" /> <span>Tiếp nhận sự cố</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="quanlydoitraphong">
+                        <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" /> <span>Quản lý đổi/trả phòng</span>
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+
+        <AuthorizeView Roles="User">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="phong">
+                        <MudIcon Icon="@Icons.Material.Filled.BedroomChild" Class="me-2" /> <span>Đặt Phòng</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="xemhopdong">
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="me-2" /> <span>Hợp Đồng Cư Trú</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="lichsuthanhtoan">
+                        <MudIcon Icon="@Icons.Material.Filled.Payment" Class="me-2" /> <span>Lịch Sử Thanh Toán</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="noiquy">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Class="me-2" /> <span>Nội quy</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="baocaosuco">
+                        <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" /> <span>Báo Cáo Sự Cố</span>
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+    </nav>
+</div>
+<!-- Right-Side Menu -->
+<div class="right-menu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="thongtin">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Class="me-2" /> <span>Thông Tin</span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="huongdan">
+                <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Class="me-2" /> <span>Hướng Dẫn</span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="lienhe">
+                <MudIcon Icon="@Icons.Material.Filled.ContactSupport" Class="me-2" /> <span>Liên Hệ</span>
+            </NavLink>
+        </div>
+    </nav>
+</div>
+ 
+

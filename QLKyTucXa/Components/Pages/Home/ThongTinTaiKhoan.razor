@@ -1,0 +1,483 @@
+﻿@page "/thongtintaikhoan"
+@inject ISinhVienServices SinhVienServices
+@inject IPhuHuynhServices PhuHuynhServices
+@inject INhanVienServices NhanVienServices
+@inject ITaiKhoanServices TaiKhoanServices
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<AuthorizeView Roles="User" Context="nguoidung">
+    <Authorized>
+        <div class="d-flex align-items-center">
+            <h3 class="mb-0 mr-3">Thông Tin: </h3>
+            <div class="col-sm-3">
+                <select class="form-control" @onchange="OnSelectionChanged">
+                    <option value="TaiKhoan">Tài khoản</option>
+                    <option value="PhuHuynh">Phụ huynh</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-warning ml-auto" @onclick="quaylai">Quay lại</button>
+        </div>
+
+        @if (selectedOption == "TaiKhoan")
+        {
+            <div class="form-wrapper">
+                <table class="table mb-1 mt-1">
+                    <thead>
+                        <tr>
+                            <th>Tên đăng nhập</th>
+                            <th>Email</th>
+                            <th>Vai trò</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                @if (editMode)
+                                {
+                                    <InputText @bind-Value="taikhoan.TenDangNhap" class="form-control" style="width: 150px;" />
+                                }
+                                else
+                                {
+                                    @(taikhoan.TenDangNhap)
+                                }
+                            </td>
+                            <td>@(taikhoan.Email)</td>
+                            <td>@(taikhoan.VaiTro)</td>
+                            <td>
+                                @if (editMode)
+                                {
+                                    <button class="btn btn-primary" @onclick="SaveEdit">Lưu</button>
+                                    <button class="btn btn-secondary" @onclick="CancelEdit">Hủy</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-secondary" @onclick="@(() => EditTT(taikhoan.Iduser))">Sửa</button>
+                                }
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+                @if (sinhvien == null)
+                {
+                    <h2>Bạn chưa cần cập nhật thêm thông tin</h2>
+                }
+                else
+                {
+                    <div class="addbook_form">
+                        <div class="addbook_form_body">
+                            <div class="form-wrapper">
+                                <EditForm FormName="capnhatsinhvien" Model="sinhvien" OnValidSubmit="HandleValidSubmit">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+                                    <div class="container">
+                                        <div class="row">
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="MSSV" class="col-form-label">MSSV:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputText id="MSSV" class="form-control" @bind-Value="sinhvien.Mssv" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="TenSinhvien" class="col-form-label">Họ Tên:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputText id="TenSinhvien" class="form-control" @bind-Value="sinhvien.TenSinhVien" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="NgaySinh" class="col-form-label col-sm-2">Ngày Sinh:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputDate id="NgaySinh" class="form-control" @bind-Value="sinhvien.NgaySinh" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="container">
+                                        <div class="row">
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="GioiTinh" class="col-form-label col-sm-2">Giới tính:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputSelect id="GioiTinh" class="form-control" @bind-Value="sinhvien.GioiTinh">
+                                                            <option value="Nam">Nam</option>
+                                                            <option value="Nữ">Nữ</option>
+                                                        </InputSelect>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="Lop" class="col-form-label col-sm-2">Lớp:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputText id="Lop" class="form-control" @bind-Value="sinhvien.Lop" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <br />
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="Khoa" class="col-form-label col-sm-2">Khoa:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputText id="Khoa" class="form-control" @bind-Value="sinhvien.Khoa" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="container">
+                                        <div class="row">
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="SoCCCD" class="col-form-label col-sm-2">Số CCCD:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputText id="SoCCCD" class="form-control" @bind-Value="sinhvien.SoCccd" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <br />
+                                            <div class="col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="DiaChi" class="col-form-label col-sm-2">Dịa chỉ:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputText id="DiaChi" class="form-control" @bind-Value="sinhvien.DiaChi" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <br />
+                                            <div class="col-sm-4 ">
+                                                <div class="form-group">
+                                                    <label for="SDT" class="col-form-label col-sm-2">SDT:</label>
+                                                    <div class="col-sm-8">
+                                                        <InputText id="SDT" class="form-control" @bind-Value="sinhvien.Sdt" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                    <MudButton OnClick="HandleValidSubmit" Variant="Variant.Filled" Color="Color.Primary">Lưu</MudButton>
+                                        <MudSnackbarProvider />
+                                    </div>
+                                    <br />
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                }
+        }
+        else
+        {
+            <br />
+            <div class="form-wrapper">
+                <table class="table mb-1 mt-1">
+                    <thead>
+                        <tr>
+                            <th>Tên phụ huynh</th>
+                            <th>Ngày sinh</th>
+                            <th>Nghề nghiệp</th>
+                            <th>Số điện thoại</th>
+                            <th>Quan hệ</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var forecast in cacphuhuynh)
+                        {
+                            <tr>
+                                <td>
+                                    @if (editMode)
+                                    {
+                                        <input type="text" @bind="forecast.HoTen" class="form-control" style="width: 150px;" />
+                                    }
+                                    else
+                                    {
+                                        @(forecast.HoTen)
+                                    }
+                                </td>
+
+                                <td>
+                                    @if (editMode)
+                                    {
+                                        <InputDate @bind-Value="forecast.NgaySinh" class="form-control" style="width: 150px;" />
+                                    }
+                                    else
+                                    {
+                                        @(forecast.NgaySinh?.ToString("dd/MM/yyyy"))
+                                    }
+                                </td>
+                                <td>
+                                    @if (editMode)
+                                    {
+                                        <input type="text" @bind="forecast.NgheNghiep" class="form-control" style="width: 150px;" />
+                                    }
+                                    else
+                                    {
+                                        @(forecast.NgheNghiep)
+                                    }
+                                </td>
+                                <td>
+                                    @if (editMode)
+                                    {
+                                        <input type="text" @bind="forecast.Sdt" class="form-control" style="width: 120px;" />
+                                    }
+                                    else
+                                    {
+                                        @(forecast.Sdt)
+                                    }
+                                </td>
+                                <td>
+                                    @if (editMode)
+                                    {
+                                        <input type="text" @bind="forecast.QuanHe" class="form-control" style="width: 80px;" />
+                                    }
+                                    else
+                                    {
+                                        @(forecast.QuanHe)
+                                    }
+                                </td>
+                                <td>
+                                    @if (editMode)
+                                    {
+                                        <button class="btn btn-success" @onclick="SaveEdit">Lưu</button>
+                                        <button class="btn btn-secondary" @onclick="CancelEdit">Hủy</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-secondary" @onclick="@(() => EditTT(forecast.IdphuHuynh))">Sửa</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+<AuthorizeView Roles="Employee, Admin" Context="quanly">
+    <Authorized>
+        <div class="d-flex align-items-center">
+            <h3 class="mb-0 mr-3">Thông tin tài khoản</h3>
+            <button type="button" class="btn btn-warning ml-auto" @onclick="quaylai">Quay lại</button>
+        </div>
+
+            <div class="form-wrapper">
+                <table class="table mb-1 mt-1">
+                    <thead>
+                        <tr>
+                            <th>Tên đăng nhập</th>
+                            <th>Email</th>
+                            <th>Vai trò</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                @if (editMode)
+                                {
+                                    <InputText @bind-Value="taikhoan.TenDangNhap" class="form-control" style="width: 150px;" />
+                                }
+                                else
+                                {
+                                    @(taikhoan.TenDangNhap)
+                                }
+                            </td>
+                            <td>@(taikhoan.Email)</td>
+                            <td>@(taikhoan.VaiTro)</td>
+                            <td>
+                                @if (editMode)
+                                {
+                                    <button class="btn btn-primary" @onclick="SaveEdit">Lưu</button>
+                                    <button class="btn btn-secondary" @onclick="CancelEdit">Hủy</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-secondary" @onclick="@(() => EditTT(taikhoan.Iduser))">Sửa</button>
+                                }
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            @if (!user.IsInRole("Admin"))
+            {
+            if (nhanvien == null)
+            {
+                <h2>Bạn cần cập nhật thêm thông tin</h2>
+            }
+            else
+            {
+                <div class="addbook_form">
+                    <div class="addbook_form_body">
+                        <div class="form-wrapper">
+                            <EditForm FormName="capnhatnhanvien" Model="nhanvien" OnValidSubmit="HandleValidSubmitNV">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
+                                <div class="container">
+                                    <div class="row">
+                                        <div class="col-sm-5">
+                                            <div class="form-group">
+                                                <label for="HoTen" class="col-form-label">Tên nhân viên:</label>
+                                                <div class="col-sm-8">
+                                                    <InputText id="HoTen" class="form-control" @bind-Value="nhanvien.HoTen" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <div class="form-group">
+                                                <label for="Sdt" class="col-form-label">Số điện thoại:</label>
+                                                <div class="col-sm-6">
+                                                    <InputText id="Sdt" class="form-control" @bind-Value="nhanvien.Sdt" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-3">
+                                            <div class="form-group">
+                                                <label for="DiaChi" class="col-form-label col-sm-2">Địa chỉ:</label>
+                                                <div class="col-sm-7">
+                                                    <InputText id="DiaChi" class="form-control" @bind-Value="nhanvien.DiaChi" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="container">
+                                    <div class="row">
+                                        <div class="col-sm-5">
+                                            <div class="form-group">
+                                                <label for="ChucVu" class="col-form-label col-sm-2">Chức vụ:</label>
+                                                <div class="col-sm-8">
+                                                    <InputText id="ChucVu" class="form-control" @bind-Value="nhanvien.ChucVu" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <MudButton OnClick="HandleValidSubmitNV" Variant="Variant.Filled" Color="Color.Primary">Lưu</MudButton>
+                                    <MudSnackbarProvider />
+                                </div>
+                                <br />
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+            }
+            }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private string selectedOption = "TaiKhoan";
+    private Sinhvien? sinhvien = new Sinhvien();
+    private Taikhoan? taikhoan = new Taikhoan();
+    private Nhanvien? nhanvien = new Nhanvien();
+    private List<Phuhuynh?> cacphuhuynh = new List<Phuhuynh?>();
+    private Phuhuynh? phuhuynh = new Phuhuynh();
+    private ClaimsPrincipal? user;
+    private bool editMode = false;
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        sinhvien = await SinhVienServices.GetByIdUserAsync(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+        taikhoan = await TaiKhoanServices.GettaikhoanByIdAsync(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+        if (sinhvien != null)
+            cacphuhuynh = await PhuHuynhServices.GetPhuHuynhByStudentIdAsync(sinhvien.Mssv);
+        nhanvien = await NhanVienServices.GetnhavienByIduserAsync(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+    }
+
+    private void OnSelectionChanged(ChangeEventArgs e) => selectedOption = e.Value.ToString();
+
+    private async Task HandleValidSubmit()
+    {
+        Snackbar.Add("Cập nhập thông tin thành công!", Severity.Success, config => { config.VisibleStateDuration = 300; });
+        await SinhVienServices.UpdateAsync(sinhvien);
+    }
+
+    private async Task HandleValidSubmitNV()
+    {
+        Snackbar.Add("Cập nhập thông tin thành công!", Severity.Success, config => { config.VisibleStateDuration = 300;});
+        await NhanVienServices.UpdatePhongAsync(nhanvien);
+    }
+
+    private void quaylai() => Navigation.NavigateTo("/", true);
+
+    private void EditTT(string id)
+    {
+        if (selectedOption == "TaiKhoan")
+        {
+            editMode = true;
+        }
+        else
+        {
+            editMode = true;
+            phuhuynh = cacphuhuynh.FirstOrDefault(d => d.IdphuHuynh == id);
+        }
+    }
+
+    private void CancelEdit() => editMode = false;
+
+    private async Task SaveEdit()
+    {
+        if (selectedOption == "TaiKhoan")
+        {
+            if(taikhoan != null)
+            {
+                editMode = false;
+                await TaiKhoanServices.UpdatetaikhoanAsync(taikhoan);
+            }
+        }
+        else
+        {
+            if (phuhuynh != null)
+            {
+                editMode = false;
+                await PhuHuynhServices.UpdatePhuHuynhAsync(phuhuynh);
+            }
+        }
+    }
+}
+
+<style>
+
+    .form-wrapper {
+        background-color: #f0f8ff; /* Màu nền sáng (AliceBlue) */
+        border: 1px solid #ccc; /* Đường viền xám nhạt */
+        border-radius: 8px; /* Bo tròn các góc */
+        padding: 8px; /* Khoảng cách nội dung từ các cạnh */
+        margin: 8px; /* Khoảng cách từ các phần tử khác */
+    }
+
+    .addbook_form .form-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+        .addbook_form .form-group label {
+            margin-right: 1rem;
+            flex: 1;
+        }
+
+        .addbook_form .form-group .form-control {
+            flex: 2;
+        }
+</style>

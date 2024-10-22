@@ -1,0 +1,27 @@
+﻿@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using QLKyTucXa
+@using QLKyTucXa.Components
+@using MudBlazor
+@using QLKyTucXa.Controller.Interfaces
+@using QLKyTucXa.Data
+@using QLKyTucXa.Components.Pages.PhuHuynh
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using QLKyTucXa.Controller.ViewContro
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using QLKyTucXa.Controller.Services
+@using QLKyTucXa.Components.Pages.Home
+@using System.Linq;
+@attribute [Authorize]
+@using QRCoder
+@* tất cả các trang và component sẽ yêu cầu người dùng phải được xác thực (logged in) để truy cập.*@

@@ -1,0 +1,123 @@
+﻿@inject NavigationManager navigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="avatar-container" @onclick="ToggleDropdown" tabindex="0" @onfocusout="OnFocusOut" @onkeydown="OnKeyDown">
+    <div class="current-date-time" style="color: #6c757d; font-size: 0.9em; text-align: left;">@currentDateTime</div>
+    <span style="color: inherit;">Xin chào, </span><span class="user-name" style="color: #007bff; font-weight: bold;">@userName</span>
+    @if (isDropdownOpen)
+
+    {
+        <div class="dropdown-menu show">
+            <a class="dropdown-item" href="/profile" @onclick="thongtin" @onmousedown="PreventFocusOut">Thông tin tài khoản</a>
+            <a class="dropdown-item" href="/login" @onclick="Logout" @onmousedown="PreventFocusOut">Đăng xuất</a>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isDropdownOpen = false;
+    private bool isDropdownItemClicked = false;
+    private string userName = "";
+    private string currentDateTime;
+    private System.Timers.Timer timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetUserNameAsync();
+        StartTimer();
+    }
+
+    private async Task GetUserNameAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            userName = user.Identity.Name ?? "User"; // Hoặc lấy tên từ claim khác nếu cần
+        }
+    }
+
+    private void StartTimer()
+    {
+        currentDateTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+        timer = new System.Timers.Timer(1000); // Cập nhật mỗi giây
+        timer.Elapsed += UpdateTime;
+        timer.Start();
+    }
+
+    private void UpdateTime(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        currentDateTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+        InvokeAsync(StateHasChanged); // Cập nhật UI
+    }
+
+    public void Dispose()
+    {
+        timer?.Stop();
+        timer?.Dispose();
+    }
+
+    private void ToggleDropdown()
+    {
+        isDropdownOpen = !isDropdownOpen;
+    }
+
+    private void Logout() => navigationManager.NavigateTo("/logout", true);
+    private void thongtin() => navigationManager.NavigateTo("/thongtintaikhoan", true);
+    private void OnFocusOut()
+    {
+        if (!isDropdownItemClicked)
+        {
+            isDropdownOpen = false;
+            StateHasChanged();
+        }
+        isDropdownItemClicked = false; // Reset flag after focusout
+    }
+
+    private void PreventFocusOut()
+    {
+        isDropdownItemClicked = true; // Set flag to prevent hiding dropdown
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") // Optional: Close dropdown with Escape key
+        {
+            isDropdownOpen = false;
+            StateHasChanged();
+        }
+    }
+}
+
+<style>
+    .avatar-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    .avatar-img {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: white;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+    }
+        .dropdown-menu.show {
+            display: block;
+        }
+    .dropdown-item {
+        padding: 8px;
+        cursor: pointer;
+    }
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
+        }
+</style>

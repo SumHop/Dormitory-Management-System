@@ -1,0 +1,202 @@
+﻿@page "/Addsinhvien/{id?}"
+
+@inject NavigationManager navigationManager
+@inject ISinhVienServices Service
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+@if (!string.IsNullOrEmpty(id))
+{
+    <PageTitle>CapNhatThongTin</PageTitle>
+}
+else
+{
+    <PageTitle>ThemSinhVien</PageTitle>
+}
+<div class="addbook_form">
+    <div class="addbook_form_body">
+        <div class="form-wrapper">
+            <EditForm FormName="capnhatsinhvien" Model="sinhvien" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="MSSV" class="col-form-label">MSSV:</label>
+                                <div class="col-sm-8">
+                                    <InputText id="MSSV" class="form-control" @bind-Value="sinhvien.Mssv" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="TenSinhvien" class="col-form-label">Họ và Tên:</label>
+                                <div class="col-sm-8">
+                                    <InputText id="TenSinhvien" class="form-control" @bind-Value="sinhvien.TenSinhVien" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="NgaySinh" class="col-form-label col-sm-2">Ngày sinh:</label>
+                                <div class="col-sm-8">
+                                    <InputDate id="NgaySinh" class="form-control" @bind-Value="sinhvien.NgaySinh" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="GioiTinh" class="col-form-label col-sm-2">Giới tính:</label>
+                                <div class="col-sm-8">
+                                    <InputSelect id="GioiTinh" class="form-control" @bind-Value="sinhvien.GioiTinh">
+                                        <option value="Nam">Nam</option>
+                                        <option value="Nữ">Nữ</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="Lop" class="col-form-label col-sm-2">Lớp:</label>
+                                <div class="col-sm-8">
+                                    <InputText id="Lop" class="form-control" @bind-Value="sinhvien.Lop" />
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="Khoa" class="col-form-label col-sm-2">Khoa:</label>
+                                <div class="col-sm-8">
+                                    <InputText id="Khoa" class="form-control" @bind-Value="sinhvien.Khoa" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="SoCCCD" class="col-form-label col-sm-2">Số CCCD:</label>
+                                <div class="col-sm-8">
+                                    <InputText id="SoCCCD" class="form-control" @bind-Value="sinhvien.SoCccd" />
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="DiaChi" class="col-form-label col-sm-2">Địa chỉ:</label>
+                                <div class="col-sm-8">
+                                    <InputText id="DiaChi" class="form-control" @bind-Value="sinhvien.DiaChi" />
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                        <div class="col-sm-4 ">
+                            <div class="form-group">
+                                <label for="SDT" class="col-form-label col-sm-2">SDT:</label>
+                                <div class="col-sm-8">
+                                    <InputText id="SDT" class="form-control" @bind-Value="sinhvien.Sdt" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <MudButton OnClick="HandleValidSubmit" Variant="Variant.Filled" Color="Color.Primary">Lưu</MudButton>
+                    <MudSnackbarProvider />
+                    <MudButton OnClick="quaylai" Variant="Variant.Filled" Color="Color.Warning">Quay Lại</MudButton>
+
+                </div>
+                <br />
+            </EditForm>
+        </div>
+    </div>
+</div>
+<br/>
+@code {
+    [Parameter]
+    public string? id { get; set; }
+
+    private ClaimsPrincipal? user;
+    public Sinhvien sinhvien { get; set; } = new Sinhvien();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        if (!string.IsNullOrEmpty(id))
+        {
+            sinhvien = await Service.GetByIdAsync(id);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            Snackbar.Add("thêm sinh viên thành công!", Severity.Success, config => { config.VisibleStateDuration = 300; });
+            await Task.Delay(1000);
+            sinhvien.Iduser = user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString();
+            await Service.Addsinhviensync(sinhvien);
+        }
+        else
+        {
+            Snackbar.Add("Cập nhật sinh viên thành công!", Severity.Success, config => { config.VisibleStateDuration = 300; });
+            await Task.Delay(1000);
+            await Service.UpdateAsync(sinhvien);
+        }
+        if (user.IsInRole("Admin"))
+        {
+            navigationManager.NavigateTo("/sinhvien", true);
+        }
+        else
+        {
+            navigationManager.NavigateTo("/", true);
+        }
+    }
+
+    private void quaylai()
+    {
+        if (user.IsInRole("Admin"))
+        navigationManager.NavigateTo("/sinhvien", true);
+        else
+        navigationManager.NavigateTo("/", true);
+    }
+}
+<style>
+
+    .form-wrapper {
+        background-color: #f0f8ff; /* Màu nền sáng (AliceBlue) */
+        border: 1px solid #ccc; /* Đường viền xám nhạt */
+        border-radius: 8px; /* Bo tròn các góc */
+        padding: 8px; /* Khoảng cách nội dung từ các cạnh */
+        margin: 8px; /* Khoảng cách từ các phần tử khác */
+    }
+
+    .addbook_form .form-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+        .addbook_form .form-group label {
+            margin-right: 1rem;
+            flex: 1;
+        }
+
+        .addbook_form .form-group .form-control {
+            flex: 2;
+        }
+</style>

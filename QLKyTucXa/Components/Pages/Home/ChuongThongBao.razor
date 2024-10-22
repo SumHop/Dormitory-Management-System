@@ -1,0 +1,154 @@
+﻿@inject IThongBaoServices ThongBaoServices
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<div class="notification-bell" tabindex="0" @onfocusout="OnFocusOut">
+    <MudIconButton @onclick="ToggleNotifications" Color="Color.Default">
+        @if (unreadCount > 0)
+        {
+            <MudBadge Content="@unreadCount" Overlap="true" Class="mx-1 my-1" Color="Color.Error">
+                <MudIcon Icon="@Icons.Material.Filled.Notifications" />
+            </MudBadge>
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Notifications" />
+        }
+    </MudIconButton>
+
+    @if (showNotifications)
+    {
+        <!-- dropdown thông báo -->
+        <div class="notification-dropdown">
+            @if (notifications.Any())
+            {
+                @foreach (var thongBao in notifications)
+                {
+                    <div class="notification-item @(thongBao.TrangThaiThongBao == true ? "read-notification" : "")"
+                         @onmousedown="PreventFocusOut" @onclick="() => MarkAsReadAndNavigate(thongBao)">
+                        @thongBao.NoiDung
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="notification-item">Không có thông báo mới</div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .notification-bell {
+        position: relative;
+    }
+
+    .notification-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: white;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        max-height: 200px;
+        width: 250px;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+
+    .notification-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+    }
+
+        .notification-item:hover {
+            background-color: #f5f5f5;
+        }
+
+    .read-notification {
+        color: gray; /* Màu nhạt hơn cho thông báo đã đọc */
+        background-color: #f9f9f9; /* Hoặc màu nền khác */
+    }
+
+    .mark-all-read {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border: none;
+        cursor: pointer;
+        text-align: center;
+        font-weight: bold;
+    }
+
+        .mark-all-read:hover {
+            background-color: #e0e0e0;
+        }
+
+    .no-notifications-message {
+        padding: 10px;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@code {
+    private int unreadCount;
+    private bool showNotifications = false;
+    private bool isDropdownItemClicked = false;
+    private List<ThongBao> notifications = new List<ThongBao>();
+    private ClaimsPrincipal? user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpdateNotificationsAsync();
+    }
+
+    private async Task UpdateNotificationsAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            notifications = await ThongBaoServices.GetthongbaobyisuserAsync(userId);
+            unreadCount = notifications.Count(tb => tb.TrangThaiThongBao != true);
+
+            // Sử dụng InvokeAsync để đảm bảo thay đổi trạng thái UI xảy ra trên luồng UI
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ToggleNotifications()
+    {
+        showNotifications = !showNotifications;
+    }
+
+    private async Task MarkAsReadAndNavigate(ThongBao thongBao)
+    {
+        await ThongBaoServices.DanhDauThongBaoAsync(thongBao.MaThongBao);
+
+        await UpdateNotificationsAsync();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFocusOut()
+    {
+        if (!isDropdownItemClicked)
+        {
+            showNotifications = false;
+            StateHasChanged();
+        }
+        isDropdownItemClicked = false; // Reset lại flag sau khi kiểm tra
+    }
+
+    private void PreventFocusOut()
+    {
+        isDropdownItemClicked = true; // Set flag to prevent hiding dropdown
+    }
+}

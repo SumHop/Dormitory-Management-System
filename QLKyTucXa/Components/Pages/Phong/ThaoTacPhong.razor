@@ -1,0 +1,144 @@
+﻿@page "/Addphong/{id?}"
+
+@inject NavigationManager navigationManager
+@inject IPhongServices Service
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+@if (!string.IsNullOrEmpty(id))
+{
+    <PageTitle>CapNhatThongTin</PageTitle>
+}
+else
+{
+    <PageTitle>ThemPhong</PageTitle>
+}
+<div class="addbook_form">
+    <div class="addbook_form_body">
+        <EditForm Model="phong" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <h3>
+                @(!string.IsNullOrEmpty(id) ? "Cập Nhật phòng" : "Thêm phòng")
+            </h3>
+            <br />
+            <div class="form-group row">
+                <label for="TenPhong" class="col-form-label col-sm-2">Phòng:</label>
+                <div class="col-sm-10">
+                    <InputText id="TenPhong" class="form-control" @bind-Value="phong.TenPhong" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="Khu" class="col-form-label col-sm-2">Khu:</label>
+                <div class="col-sm-10">
+                    <InputText id="Khu" class="form-control" @bind-Value="phong.Khu" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="Tang" class="col-form-label col-sm-2">Tầng:</label>
+                <div class="col-sm-10">
+                    <InputText id="Tang" class="form-control" @bind-Value="phong.Tang" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="SoGiuong" class="col-form-label col-sm-2">Số giường:</label>
+                <div class="col-sm-10">
+                    <InputNumber id="SoGiuong" class="form-control" @bind-Value="phong.SoGiuong" />
+                </div>
+            </div>
+            <br />
+            <div class="d-flex justify-content-between">
+                <MudButton OnClick="HandleValidSubmit" Variant="Variant.Filled" Color="Color.Primary">Lưu</MudButton>
+                <MudButton OnClick="quaylai" Variant="Variant.Filled" Color="Color.Warning">Quay lại</MudButton>
+            </div>
+        </EditForm>
+    </div>
+</div>
+<MudSnackbarProvider />
+@code {
+    [Parameter]
+    public string? id { get; set; }
+
+    public Phong phong { get; set; } = new Phong();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            phong = await Service.GetPhongByIdAsync(id);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+         /* if (string.IsNullOrEmpty(phong.MaPhong))
+             {
+             phong.MaPhong = GenerateCode();
+             await Service.AddPhongAsync(phong);
+         }
+             else
+             {
+             await Service.UpdatePhongAsync(phong);
+         }
+         navigationManager.NavigateTo("/phong");*/
+
+        if (string.IsNullOrEmpty(phong.MaPhong))
+        {
+            if ((string.IsNullOrEmpty(phong.TenPhong) || string.IsNullOrEmpty(phong.Tang) || string.IsNullOrEmpty(phong.Khu) || phong.SoGiuong == null))
+            {
+                Snackbar.Add("Bạn cần nhập đầy đủ thông tin!", Severity.Warning, config =>
+                {
+                    config.VisibleStateDuration = 400;
+                    config.HideTransitionDuration = 100;
+                    config.ShowTransitionDuration = 500;
+                });
+                return;
+            }
+            else
+            {
+                Snackbar.Add("Thêm phòng thành công!", Severity.Success, config =>
+                {
+                    config.VisibleStateDuration = 400;
+                    config.HideTransitionDuration = 100;
+                    config.ShowTransitionDuration = 500;
+                });
+                await Task.Delay(1000);
+                phong.MaPhong = Guid.NewGuid().ToString();
+                phong.SoNguoiO = 0;
+                await Service.AddPhongAsync(phong);
+            }
+        }
+        else
+        {
+            if ((string.IsNullOrEmpty(phong.TenPhong) || string.IsNullOrEmpty(phong.Tang) || string.IsNullOrEmpty(phong.Khu) || phong.SoGiuong == null))
+            {
+                Snackbar.Add("Bạn cần nhập đầy đủ thông tin!", Severity.Warning, config =>
+                {
+                    config.VisibleStateDuration = 400;
+                    config.HideTransitionDuration = 100;
+                    config.ShowTransitionDuration = 500;
+                });
+                return;
+            }
+            else
+            {
+                Snackbar.Add("Cập nhật thành công!", Severity.Success, config =>
+                {
+                    config.VisibleStateDuration = 400;
+                    config.HideTransitionDuration = 100;
+                    config.ShowTransitionDuration = 500;
+                });
+                await Task.Delay(1000);
+                await Service.UpdatePhongAsync(phong);
+            }
+        }
+        navigationManager.NavigateTo("/phong", true);
+    }
+
+    private void quaylai()
+    {
+        navigationManager.NavigateTo("/phong", true);
+    }
+}

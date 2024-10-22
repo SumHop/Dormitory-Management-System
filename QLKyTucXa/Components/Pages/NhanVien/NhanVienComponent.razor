@@ -1,0 +1,228 @@
+﻿@page "/nhanvien"
+@inject INhanVienServices nhanvien
+@inject ITaiKhoanServices taikhoan
+@inject ISnackbar Snackbar
+@inject NavigationManager navigationManager
+@rendermode InteractiveServer
+@attribute [StreamRendering]
+<PageTitle>NhanVien</PageTitle>
+
+<div class="header-container">
+    <h4 style="margin: 0;">DANH SÁCH NHÂN VIÊN</h4>
+    <ThanhTimKiem OnSearchChanged="FilterDichVu" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="themmoi">Tạo mới</MudButton>
+</div>
+<br />
+@if (Nhanvien is null)
+{
+    <div class="sv-item">
+        Loading danh sách. chờ xí...
+    </div>
+}
+else
+{
+     <div class="form-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                    <th style="width:200px; text-align: center;">Mã nhân viên</th>
+                    <th style="width:150px; text-align: center;">Tên nhân viên</th>
+                    <th style="width:100px; text-align: center;">SDT</th>
+                    <th style="width:100px; text-align: center;">Địa chỉ</th>
+                    <th style="width:100px; text-align: center;">Chức vụ</th>
+                    <th style="width:100px; text-align: center;">Tình trạng</th>
+                    <th style="width:150px; text-align: center;">Tài khoản</th>
+                    <th style="width:200px; text-align: center;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+                @foreach (var forecast in phantrangsinhvien)
+            {
+                <tr>
+                        <td style="text-align: center;">@forecast.IdnhanVien</td>
+                        <td style="text-align: center;">@forecast.HoTen</td>
+                        <td style="text-align: center;">@forecast.Sdt</td>
+                        <td style="text-align: center;">@forecast.DiaChi</td>
+                        <td style="text-align: center;">@forecast.ChucVu</td>
+                        <td style="text-align: center;">@forecast.TinhTrang</td>
+                        <td style="text-align: center;">@(string.IsNullOrEmpty(forecast.Iduser) ? "Không có" : TaiKhoanDict[forecast.Iduser])</td>
+                        <td style="text-align: center;">
+                            <MudButton Variant="Variant.Filled" Color="Color.Transparent" OnClick="@(() => Update(forecast.IdnhanVien))">Sửa</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => Delete(forecast.IdnhanVien))">Xóa</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+        <div class="pagination">
+            <span class="pagination-button" @onclick="PreviousPage" style="cursor: @(CanGoPrevious ? "pointer" : "default");" aria-disabled="@(!CanGoPrevious)">&laquo;</span>
+            <span>Trang @CurrentPage/@TotalPages</span>
+            <span class="pagination-button" @onclick="NextPage" style="cursor: @(CanGoNext ? "pointer" : "default");" aria-disabled="@(!CanGoNext)">&raquo;</span>
+        </div>
+    </div>
+}
+<Delete @rendermode="InteractiveServer" xacnhan="xacnhanxoa" OnCancel="CancelDelete" OnOK="okDelete"></Delete>
+
+@code {
+    private List<Nhanvien> Nhanvien = new List<Nhanvien>();
+    private List<Nhanvien> timkiemnhanvien = new List<Nhanvien>();
+    private List<Nhanvien> phantrangsinhvien = new List<Nhanvien>();
+    private Dictionary<string, string> TaiKhoanDict = new Dictionary<string, string>();
+    private string? idToDelete;
+    private bool xacnhanxoa = false;
+    //phân trang
+    private int PageSize = 4;
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling((double)Nhanvien.Count / PageSize);
+    private bool CanGoPrevious => CurrentPage > 1;
+    private bool CanGoNext => CurrentPage < TotalPages;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Nhanvien = await nhanvien.GetPhongAsync();
+
+        foreach (var nv in Nhanvien)
+        {
+            if (!string.IsNullOrEmpty(nv.Iduser))
+            {
+                var account = await taikhoan.GettaikhoanByIdAsync(nv.Iduser);
+                TaiKhoanDict[nv.Iduser] = account?.TenDangNhap ?? "Không có tài khoản";
+            }
+        }
+        timkiemnhanvien = Nhanvien;
+        UpdatePaginatedDichVu();
+    }
+
+    private void themmoi()
+    {
+        navigationManager.NavigateTo("/Addnhanvien");
+    }
+
+    private void Update(string id)
+    {
+        navigationManager.NavigateTo($"/Addnhanvien/{id}");
+    }
+
+    private void Delete(string id)
+    {
+        idToDelete = id;
+        xacnhanxoa = true;
+    }
+
+    private void CancelDelete()
+    {
+        xacnhanxoa = false;
+    }
+
+    private async Task okDelete()
+    {
+        if (!string.IsNullOrEmpty(idToDelete))
+        {
+
+            Snackbar.Add("xóa thành công!", Severity.Success, config => { config.VisibleStateDuration = 500; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+            await Task.Delay(1000);
+            var f = await nhanvien.GetPhongByIdAsync(idToDelete);
+            f.TinhTrang = "Đã Nghỉ Việc";
+            await nhanvien.UpdatePhongAsync(f);
+            xacnhanxoa = false;
+            Nhanvien = await nhanvien.GetPhongAsync();
+            timkiemnhanvien = Nhanvien;
+            UpdatePaginatedDichVu();
+        }
+    }
+
+    private void FilterDichVu(string searchTerm)
+    {
+        searchTerm = searchTerm?.Trim();
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            Nhanvien = timkiemnhanvien;
+        else
+        {
+            Nhanvien = timkiemnhanvien
+                .Where(d => d.IdnhanVien.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        CurrentPage = 1; // Reset to the first page after filtering
+        UpdatePaginatedDichVu();
+    }
+
+    private void UpdatePaginatedDichVu()
+    {
+        phantrangsinhvien = Nhanvien
+            .Skip((CurrentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+    }
+
+    private void PreviousPage()
+    {
+        if (CanGoPrevious)
+        {
+            CurrentPage--;
+            UpdatePaginatedDichVu();
+        }
+    }
+
+    private void NextPage()
+    {
+        if (CanGoNext)
+        {
+            CurrentPage++;
+            UpdatePaginatedDichVu();
+        }
+    }
+}
+
+<style>
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 100%;
+        margin: auto;
+    }
+
+    .search-bar {
+        flex-grow: 1;
+        max-width: 600px;
+        margin: 0 20px;
+        display: flex;
+        align-items: center;
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        margin-top: 1px;
+    }
+
+    .pagination-button {
+        font-size: 15px;
+        color: #007bff;
+        cursor: pointer;
+        user-select: none;
+        padding: 5px 10px;
+        border-radius: 5px;
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+        .pagination-button:hover {
+            background-color: #e9ecef;
+            color: #0056b3;
+        }
+
+        .pagination-button[aria-disabled="true"] {
+            color: #6c757d;
+            cursor: default;
+        }
+
+    .form-wrapper {
+        background-color: #E1F5FE; /* Màu nền sáng (AliceBlue) */
+        border: 1px solid #ccc; /* Đường viền xám nhạt */
+        border-radius: 8px; /* Bo tròn các góc */
+        padding: 8px; /* Khoảng cách nội dung từ các cạnh */
+        margin: 8px; /* Khoảng cách từ các phần tử khác */
+    }
+</style>

@@ -1,0 +1,94 @@
+﻿@inject IPhuHuynhServices ph
+@inject ISnackbar Snackbar
+@inject NavigationManager navigationManager
+@rendermode InteractiveServer
+@attribute [StreamRendering]
+<PageTitle>Phụ huynh</PageTitle>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="themmoi">Tạo Mới</MudButton>
+    <br />
+    @if (phuhuynh == null || !phuhuynh.Any())
+    {
+        <h2>Thêm Thông tin</h2>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Tên phụ huynh</th>
+                    <th>Ngày sinh</th>
+                    <th>Nghề nghiệp</th>
+                    <th>SDT</th>
+                    <th>Quan hệ</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var forecast in phuhuynh)
+                {
+                    <tr>
+                        <td>@forecast.HoTen</td>
+                        <td>@forecast.NgaySinh</td>
+                        <td>@forecast.NgheNghiep</td>
+                        <td>@forecast.Sdt</td>
+                        <td>@forecast.QuanHe</td>
+                        <td>
+                        <MudButton Variant="Variant.Filled" Color="Color.Default" OnClick="@(() => Update(forecast.IdphuHuynh))">Sửa</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => Delete(forecast.IdphuHuynh))">Xóa</MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+   
+
+<Delete @rendermode="InteractiveServer" xacnhan="xacnhanxoa" OnCancel="CancelDelete" OnOK="okDelete"></Delete> 
+
+@code {
+    [Parameter]
+    public string? StudentId { get; set; }
+    private List<Phuhuynh> phuhuynh = new List<Phuhuynh>();
+    private string? idToDelete; 
+
+    private bool xacnhanxoa = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        phuhuynh = await ph.GetPhuHuynhByStudentIdAsync(StudentId);
+    }
+
+    private void themmoi()
+    {
+        navigationManager.NavigateTo($"/Addphuhuynh?studentId={StudentId}");
+    }
+
+    private void Update(string id)
+    {
+        navigationManager.NavigateTo($"/Addphuhuynh/{id}");
+    }
+
+    private void Delete(string id)
+    {
+        idToDelete = id;
+        xacnhanxoa = true;
+    }
+
+    private void CancelDelete()
+    {
+        xacnhanxoa = false;
+    }
+
+    private async Task okDelete()
+    {
+        if (!string.IsNullOrEmpty(idToDelete))
+        {
+            Snackbar.Add("xóa thành công!", Severity.Success, config => { config.VisibleStateDuration = 500; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+            await Task.Delay(1000);
+            await ph.DeletePhuHuynhAsync(idToDelete);
+            xacnhanxoa = false;
+            phuhuynh = await ph.GetPhuhuynhsAsync();
+        }
+    }
+}
+

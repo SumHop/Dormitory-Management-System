@@ -1,0 +1,63 @@
+﻿@code {
+    [Parameter] public string? SelectedKhu { get; set; }
+    [Parameter] public string? SelectedTang { get; set; }
+    [Parameter] public string? SelectedGiuong { get; set; }
+    [Parameter]
+    public List<Phong> phongs { get; set; }
+    [Parameter] public EventCallback<string?> OnSelectedKhuChanged { get; set; }
+    [Parameter] public EventCallback<string?> OnSelectedTangChanged { get; set; }
+    [Parameter] public EventCallback<string?> OnSelectedGiuongChanged { get; set; }
+
+    private void OnKhuChange(ChangeEventArgs e)
+    {
+        SelectedKhu = e.Value?.ToString();
+        OnSelectedKhuChanged.InvokeAsync(SelectedKhu);
+    }
+
+    private void OnTangChange(ChangeEventArgs e)
+    {
+        SelectedTang = e.Value?.ToString();
+        OnSelectedTangChanged.InvokeAsync(SelectedTang);
+    }
+
+    private void OnGiuongChange(ChangeEventArgs e)
+    {
+        SelectedGiuong = e.Value?.ToString();
+        OnSelectedGiuongChanged.InvokeAsync(SelectedGiuong);
+    }
+}
+
+<div class="filters mb-3">
+    <div class="row">
+        <div class="col-md-4">
+            <label for="khuFilter">Khu:</label>
+            <select id="khuFilter" class="form-select" @onchange="OnKhuChange">
+                <option value="">Tất cả</option>
+                @foreach (var khu in phongs.Select(p => p.Khu).Distinct())
+                {
+                    <option value="@khu">@khu</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="tangFilter">Tầng:</label>
+            <select id="tangFilter" class="form-select" @onchange="OnTangChange">
+                <option value="">Tất cả</option>
+                @foreach (var tang in phongs.Select(p => p.Tang).Distinct())
+                {
+                    <option value="@tang">@tang</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="giuongFilter">Số giường:</label>
+            <select id="giuongFilter" class="form-select" @onchange="OnGiuongChange">
+                <option value="">Tất cả</option>
+                @foreach (var giuong in phongs.Select(p => p.SoGiuong).Distinct())
+                {
+                    <option value="@giuong">@giuong</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>

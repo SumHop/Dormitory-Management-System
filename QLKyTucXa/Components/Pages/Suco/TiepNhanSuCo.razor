@@ -1,0 +1,74 @@
+﻿@page "/nghiemthusuco"
+@inject IThongBaoServices ThongBaoServices
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<PageTitle>TIẾP NHẬN SỰ CỐ</PageTitle>
+
+<h3>DANH SÁCH SỰ CỐ</h3>
+
+@if (thongBaos == null)
+{
+    <p>Đang tải dữ liệu...</p>
+}
+else if (thongBaos.Count == 0)
+{
+    <p>Không có sự cố nào được báo cáo.</p>
+}
+else
+{
+    <MudTable Items="@thongBaos" Striped="true" Hover="true">
+        <HeaderContent>
+            <MudTh>Mã Thông Báo</MudTh>
+            <MudTh>Thời gian</MudTh>
+            <MudTh>Nội dung</MudTh>
+            <MudTh>Trạng thái</MudTh>
+            <MudTh>Hành động</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.MaThongBao</MudTd>
+            <MudTd>@context.ThoiGianThongBao?.ToString("dd/MM/yyyy HH:mm:ss")</MudTd>
+            <MudTd>@context.NoiDung</MudTd>
+            <MudTd>@(context.TrangThaiThongBao.GetValueOrDefault() ? "Đã xử lý" : "Chưa xử lý")</MudTd>
+            <MudTd>
+                <MudButton Variant="Variant.Outlined" @onclick="() => XemChiTietSuCo(context.MaThongBao)" Color="Color.Secondary">Xem Chi Tiết Sự Cố</MudButton>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<ThongBao> thongBaos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string userId = GetCurrentUserId();
+        thongBaos = await ThongBaoServices.GetLichSuSuCoByUserIdAsync(userId);
+
+        // Kiểm tra dữ liệu đã nhận
+        Console.WriteLine($"Số lượng thông báo: {thongBaos?.Count}");
+        foreach (var thongBao in thongBaos)
+        {
+            Console.WriteLine($"Mã thông báo: {thongBao.MaThongBao}");
+        }
+    }
+
+    private void XemChiTietSuCo(string maThongBao)
+    {
+        if (!string.IsNullOrWhiteSpace(maThongBao))
+        {
+            var url = $"/chitiet/{maThongBao}";
+            Console.WriteLine($"Điều hướng đến: {url}"); // In ra URL
+            NavigationManager.NavigateTo(url);
+        }
+        else
+        {
+            Snackbar.Add("Mã thông báo không hợp lệ!", Severity.Error);
+        }
+    }
+
+    private string GetCurrentUserId()
+    {
+        return "d6096885-7976-43bb-ad25-d93d9420af7d"; // Thay thế bằng logic lấy ID người dùng thực tế
+    }
+}

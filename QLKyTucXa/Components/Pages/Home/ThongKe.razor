@@ -1,0 +1,315 @@
+﻿
+<div class="card-container">
+    <div class="bieudo">
+        <p class="cookieDescription">
+            <MudChart ChartType="ChartType.StackedBar" ChartSeries="@Series" XAxisLabels="@XAxisLabels" Width="100%" Height="300px">
+            </MudChart>
+        </p>
+    </div>
+    <div class="card">
+        <p class="cookieDescription">
+            <MudChart ChartType="ChartType.Pie" InputData="@data"  InputLabels="@labels" Width="300px" Height="200px" />
+        </p>
+    </div>
+    <div class="the">
+        <p class="cookieHeading">DOANH THU HD BẮT BUỘC</p>
+        <p class="cookieDescription">
+            @tongdoanhthuhoadonbatbuoc().Value.ToString("N0") VND
+        </p>
+    </div>
+    <div class="the">
+        <p class="cookieHeading">TỔNG SINH VIÊN CƯ TRÚ</p>
+        <p class="cookieDescription">@tongsinhvienhiencos</p>
+    </div>
+    <div class="the2">
+        <p class="cookieHeading">DOANH THU HD THÔNG THƯỜNG</p>
+        <p class="cookieDescription">@Tongtiendichvuthongthuong().Value.ToString("N0") VND</p>
+    </div>
+</div>
+
+
+@code {
+    [Parameter] public List<Hoadon> cachoadon { get; set; }
+    [Parameter] public List<Dichvu> cacdichvu { get; set; }
+    [Parameter] public List<Chitiethoadon> cthd { get; set; }
+    [Parameter] public List<Phong> tongphonghienco { get; set; }
+    [Parameter] public List<Phong> cacphong { get; set; }
+    [Parameter] public List<Hopdong> cachopdong { get; set; }
+    [Parameter] public EventCallback kiemtra { get; set; }
+    private double tongphonghiencos = 0;
+    private int tongsinhvienhiencos = 0;
+    private double tongphongcontrong = 0;
+    private int tonghoadonthongthuong = 0;
+    private int tonHDbatbuoc = 0;
+    private int sohopdongtheothang = 0;
+    private List<ChartSeries> Series = new List<ChartSeries>();
+    private string[] XAxisLabels;
+
+    private double? tt1 = 0;
+    private double? tt2 = 0;
+    private double[] data;
+    string[] labels;
+
+    protected override async void OnParametersSet()
+    {
+        //tính tổng phòng hiện có
+        if (tongphonghienco != null)
+        {
+            var h = (from p in cacphong where p.SoNguoiO == p.SoGiuong select p.MaPhong).ToList();
+            tongphonghiencos = h.Count;
+        }
+
+        await tongsienviencutru();
+        await tongphongcongtrong();
+        await tonghoadonbatbuoc();
+        await sinhvienthuephongtheothoigian();
+
+        data = new double[] { tongphonghiencos, tongphongcontrong };
+        labels = new string[] { $"Tổng phòng đã đủ người ({tongphonghiencos.ToString()})", $"Tổng phòng còn trống ({tongphongcontrong.ToString()})" };
+    }
+
+    private async Task tongsienviencutru()
+    {
+        var e = (from  hd in cachopdong 
+                 where hd.TrangThai == "Thành Công"
+                 select hd.Mssv).ToList();
+
+        tongsinhvienhiencos = e.Count;
+    }
+
+    private async Task tongphongcongtrong()
+    {
+        var h = (from p in cacphong where p.SoNguoiO != p.SoGiuong select p.MaPhong).ToList();
+        tongphongcontrong = h.Count;
+    }
+
+    private async Task tonghoadonbatbuoc()
+    {
+        var result = (from hoadon in cachoadon
+                      join chitiet in cthd on hoadon.MaHd equals chitiet.MaHd
+                      join dichvu in cacdichvu on chitiet.MaDv equals dichvu.MaDv
+                      where dichvu.LoaiDichVu == "DV Bắt Buộc" && hoadon.TrangThai == "Đã thanh toán" && hoadon.MaPhong != null
+                      group hoadon by hoadon.MaHd into g
+                      select g.Key).ToList();
+        tonHDbatbuoc = result.Count;
+    }
+
+    private async Task sinhvienthuephongtheothoigian()
+    {
+        var hopDongTheoThang = cachopdong
+            .Where(hd => hd.NgayLap.HasValue)
+            .GroupBy(hd => new
+            {
+                Nam = hd.NgayLap.Value.Year,
+                Thang = hd.NgayLap.Value.Month
+            })
+            .Select(g => new
+            {
+                Nam = g.Key.Nam,
+                Thang = g.Key.Thang,
+                SoLuongHopDong = g.Count()
+            })
+            .OrderBy(x => x.Nam)
+            .ThenBy(x => x.Thang)
+            .ToList();
+
+        // Chuẩn bị danh sách các năm có trong dữ liệu
+        var years = hopDongTheoThang.Select(h => h.Nam).Distinct().OrderBy(y => y).ToList();
+
+        // Tạo danh sách 12 tháng
+        var allMonths = Enumerable.Range(1, 12).ToList();
+
+        // Xây dựng dữ liệu cho biểu đồ với đầy đủ 12 tháng
+        var fullData = new List<ChartSeries>();
+
+        foreach (var year in years)
+        {
+            var dataForYear = new double[12]; // Mảng 12 phần tử, mỗi phần tử tương ứng với 1 tháng
+            foreach (var month in allMonths)
+            {
+                var data = hopDongTheoThang.FirstOrDefault(h => h.Nam == year && h.Thang == month);
+                dataForYear[month - 1] = data?.SoLuongHopDong ?? 0; // Nếu không có dữ liệu cho tháng đó thì gán 0
+            }
+            fullData.Add(new ChartSeries
+                {
+                    Name = $"Số lượng sinh viên thuê phòng theo tháng trong {2024}",
+                    Data = dataForYear
+                });
+        }
+
+        Series = fullData;
+        XAxisLabels = new[] { $"1", $"2", $"3", $"4", $"5", $"6", $"7", $"8", $"9", $"10", $"11", $"12" };
+    }
+
+    public double? Tongphithuephong()
+    {
+        var total = cachoadon
+            .Join(cthd,
+                h => h.MaHd,
+                c => c.MaHd,
+                (h, c) => new { h, c })
+            .Join(cacdichvu,
+                hc => hc.c.MaDv,
+                d => d.MaDv,
+                (hc, d) => new { hc.h, hc.c, d })
+            .Join(cacphong,
+                hcd => hcd.h.MaPhong,
+                p => p.MaPhong,
+                (hcd, p) => new { hcd.h, hcd.c, hcd.d, p })
+            .Where(x => x.d.LoaiDichVu == "DV Bắt Buộc"
+                        && x.h.TrangThai == "Đã thanh toán"
+                        && x.c.ChiSoDau == null
+                        && x.c.ChiSoCuoi == null)
+            .Sum(x => x.d.DonGia * x.p.SoNguoiO);
+
+        return total;
+    }
+
+    public double? Tongtiendiennuoc()
+    {
+        var total = cachoadon
+           .Join(cthd,
+               h => h.MaHd,
+               c => c.MaHd,
+               (h, c) => new { h, c })
+           .Join(cacdichvu,
+               hc => hc.c.MaDv,
+               d => d.MaDv,
+               (hc, d) => new { hc.h, hc.c, d })
+           .Join(cacphong,
+               hcd => hcd.h.MaPhong,
+               p => p.MaPhong,
+               (hcd, p) => new { hcd.h, hcd.c, hcd.d, p })
+           .Where(x => x.d.LoaiDichVu == "DV Bắt Buộc"
+                       && x.h.TrangThai == "Đã thanh toán"
+                       && x.c.ChiSoDau != null
+                       && x.c.ChiSoCuoi != null)
+           .Sum(x => x.d.DonGia * (x.c.ChiSoCuoi - x.c.ChiSoDau));
+
+        return total;
+    }
+
+    private double? Tongtiendichvuthongthuong()
+    {
+        var total = cachoadon
+         .Join(cthd,
+             h => h.MaHd,
+             c => c.MaHd,
+             (h, c) => new { h, c })
+         .Join(cacdichvu,
+             hc => hc.c.MaDv,
+             d => d.MaDv,
+             (hc, d) => new { hc.h, hc.c, d })
+         .Where(x => x.d.LoaiDichVu == "DV thông thường"
+                     && x.h.TrangThai == "Đã thanh toán"
+                     && x.h.MaPhong == null
+                     && x.c.SoLuong != null)
+         .Sum(x => x.d.DonGia * x.c.SoLuong);
+
+        return total;
+    }
+
+    private double? tongdoanhthuhoadonbatbuoc()
+    {
+        var r = Tongphithuephong() + Tongtiendiennuoc();
+        return r;
+    }
+}
+
+<style>
+    /* From Uiverse.io by 00Kubi */
+
+    .card-container {
+        display: flex;
+        flex-wrap: wrap; /* Cho phép các thẻ card xuống hàng nếu không còn đủ chỗ */
+        gap: 17px; /* Khoảng cách giữa các thẻ card */
+        margin: 0; /* Loại bỏ margin mặc định */
+        padding: 1px 0; /* Giảm khoảng cách đầu hàng và cuối hàng */
+        width: 100%; /* Đảm bảo container chiếm toàn bộ chiều rộng */
+        padding: 0; /* Loại bỏ padding của container */
+    }
+
+    .bieudo {
+        width: 630px;
+        height: 320px;
+        background-color: #1b233d;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 30px;
+        gap: 1px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 2px 2px 20px rgba(0, 0, 0, 0.062);
+    }
+
+    .the2 {
+        width: 306px;
+        height: 130px;
+        background-color: #E1BEE7;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 30px;
+        gap: 13px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 2px 2px 20px rgba(0, 0, 0, 0.062);
+    }
+    .the{
+        width: 306px;
+        height: 130px;
+        background-color: #B2EBF2;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 30px;
+        gap: 10px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 2px 2px 20px rgba(0, 0, 0, 0.062);
+    }
+    .card {
+        width: 306px;
+        height: 320px;
+        background-color: #C8E6C9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 30px;
+        gap: 13px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 2px 2px 20px rgba(0, 0, 0, 0.062);
+    }
+
+    .cookieHeading {
+        font-size: 1.3em;
+        font-weight: 1000;
+        color: rgb(26, 26, 26);
+    }
+
+    .cookieDescription {
+        text-align: center;
+        font-size: 1em;
+        font-weight: 600;
+        color: rgb(99, 99, 99);
+    }
+
+        .cookieDescription a {
+            --tw-text-opacity: 1;
+            color: rgb(59 130 246);
+        }
+
+            .cookieDescription a:hover {
+                -webkit-text-decoration-line: underline;
+                text-decoration-line: underline;
+            }
+</style>

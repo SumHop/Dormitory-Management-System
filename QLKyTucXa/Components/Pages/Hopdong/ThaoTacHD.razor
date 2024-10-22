@@ -1,0 +1,189 @@
+﻿@page "/hopdong/{id?}"
+@inject IHopDongServices opDongServices
+@inject ISinhVienServices inhVienServices
+@inject IPhongServices hongServices
+@inject IThongBaoServices hongBaoServices
+@inject ISnackbar Snackbar
+@inject NavigationManager navigationManager
+@rendermode InteractiveServer
+
+<div class="header-container">
+    <h1>Thông tin sinh viên</h1>
+    <div class="button-group">
+        <MudButton Variant="Variant.Filled" OnClick="@(() => pheduyet(@hopdong.SoHopDong))" Color="Color.Primary">Phê duyệt</MudButton>
+        <MudButton Variant="Variant.Filled" OnClick="HuyBo" Color="Color.Error">Hủy bỏ</MudButton>
+        <MudButton Variant="Variant.Filled" OnClick="quaylai" Color="Color.Warning">Quay lại</MudButton>
+    </div>
+</div>
+
+ <div class="form-wrapper">
+<table class="table">
+    <thead>
+        <tr>
+                <th style="width: 15%; text-align: center;">Mã số sinh viên</th>
+                <th style="width: 20%; text-align: center;">Tên sinh viên</th>
+                <th style="width: 10%; text-align: center;">Ngày sinh</th>
+                <th style="width: 10%; text-align: center;">Lớp</th>
+                <th style="width: 10%; text-align: center;">Khoa</th>
+                <th style="width: 10%; text-align: center;">Giới tính</th>
+                <th style="width: 15%; text-align: center;">Số CCCD</th>
+                <th style="width: 10%; text-align: center;">Địa chỉ</th>
+        </tr>
+    </thead>
+    <tbody>
+        <td style="text-align: center;">@sinhvien?.Mssv</td>
+        <td style="text-align: center;">@sinhvien?.TenSinhVien</td>
+        <td style="text-align: center;">@sinhvien?.NgaySinh?.ToString("dd/MM/yyyy")</td>
+        <td style="text-align: center;">@sinhvien?.Lop</td>
+        <td style="text-align: center;">@sinhvien?.Khoa</td>
+        <td style="text-align: center;">@sinhvien?.GioiTinh</td>
+        <td style="text-align: center;">@sinhvien?.SoCccd</td>
+        <td style="text-align: center;">@sinhvien?.DiaChi</td>
+    </tbody>
+</table>
+</div>
+<br/>
+<h1>Thông tin hợp đồng</h1>
+ <div class="form-wrapper">
+<table class="table">
+    <thead>
+        <tr>
+                <th style="text-align: center;">Số hợp đồng</th>
+                <th style="text-align: center;">Ngày lập</th>
+                <th style="text-align: center;">Trạng thái</th>
+                <th style="text-align: center;">Tên phòng</th>
+                <th style="text-align: center;">Khu</th>
+                <th style="text-align: center;">Tầng</th>
+                <th style="text-align: center;">Số giường</th>
+                <th style ="text-align: center;">Số người ở</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+                <td style="text-align: center;">@hopdong.SoHopDong</td>
+                <td style="text-align: center;">@hopdong.NgayLap</td>
+                <td style="text-align: center;">@hopdong.TrangThai</td>
+                <td style="text-align: center;">@phong?.TenPhong</td>
+                <td style="text-align: center;">@phong?.Khu</td>
+                <td style="text-align: center;">@phong?.Tang</td>
+                <td style="text-align: center;">@phong?.SoGiuong</td>
+                <td style="text-align: center;">@phong?.SoNguoiO</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+
+
+@if (hienThiLyDoHuyBo)
+{
+    <LyDoHuyBo OnHuyBoXacNhan="XuLyHuyBoXacNhan" OnDongModal="DongModalLyDoHuyBo" />
+}
+
+@code {
+    [Parameter]
+    public string? id { get; set; }
+    public Hopdong hopdong  = new Hopdong();
+    public Sinhvien? sinhvien = new Sinhvien();
+    private Phong? phong = new Phong();
+    private bool hienThiLyDoHuyBo = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            hopdong = await opDongServices.GetPhongByIdAsync(id);
+            phong = await hongServices.GetPhongByIdAsync(hopdong.MaPhong);
+        }
+        if (!string.IsNullOrEmpty(hopdong.Mssv))
+            sinhvien = await inhVienServices.GetByIdAsync(hopdong.Mssv);
+    }
+    async Task pheduyet(string id)
+    {
+        if (id != null)
+        {
+            // Tạo thông báo mới
+            var thongBao = new ThongBao
+                {
+                    MaThongBao = Guid.NewGuid().ToString(), 
+                    NoiDung = "Hợp đồng thuê chỗ ở nội trú đã được gửi đi phê duyệt.",
+                    ThoiGianThongBao = DateTime.Now,
+                    TrangThaiThongBao = false, 
+                    Iduser = sinhvien?.Iduser
+            };
+            // Lưu thông báo vào cơ sở dữ liệu
+            await hongBaoServices.AddThongBaoAsync(thongBao);
+        }
+        Snackbar.Add("Hợp đồng đã được phê duyệt!", Severity.Success, config => { config.VisibleStateDuration = 500; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+        await Task.Delay(1000);
+        //hopdong = await opDongServices.GetPhongByIdAsync(id);
+
+        if (hopdong != null)
+        {
+            hopdong.PhuongThucThanhToan = "Thành Công";
+            await opDongServices.UpdatePhongAsync(hopdong);
+
+            if (phong != null)
+            {
+                phong.SoNguoiO = phong.SoNguoiO + 1;
+                await hongServices.UpdatePhongAsync(phong);
+            }
+        }
+        navigationManager.NavigateTo("/hopdong", true);
+    }
+    void HuyBo()
+    {
+        hienThiLyDoHuyBo = true;
+    }
+    private async Task XuLyHuyBoXacNhan(string lyDo)
+    {
+        if (!string.IsNullOrEmpty(lyDo))
+        {
+                var thongBao = new ThongBao
+                {
+                    MaThongBao = Guid.NewGuid().ToString(),
+                    NoiDung = $"Hợp đồng của bạn đã bị hủy với lý do: {lyDo}",
+                    ThoiGianThongBao = DateTime.Now,
+                    TrangThaiThongBao = false,
+                    Iduser = sinhvien.Iduser
+                };
+
+            // Lưu thông báo vào cơ sở dữ liệu
+            await hongBaoServices.AddThongBaoAsync(thongBao);
+        }
+
+        opDongServices.DeletehopdongAsync(hopdong.SoHopDong);
+        navigationManager.NavigateTo("/hopdong", true);
+
+        hienThiLyDoHuyBo = false;
+    }
+    private void DongModalLyDoHuyBo()
+    {
+        hienThiLyDoHuyBo = false;
+    }
+    void quaylai()
+    {
+        navigationManager.NavigateTo("/hopdong", true);
+    }
+}
+
+<style>
+    .form-wrapper {
+        background-color: #E1F5FE; /* Màu nền sáng (AliceBlue) */
+        border: 1px solid #ccc; /* Đường viền xám nhạt */
+        border-radius: 8px; /* Bo tròn các góc */
+        padding: 8px; /* Khoảng cách nội dung từ các cạnh */
+        margin: 8px; /* Khoảng cách từ các phần tử khác */
+    }
+
+    .button-group {
+        margin-left: auto; /* Đẩy nhóm nút sang phải */
+    }
+
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 100%;
+        margin: auto;
+    }
+</style>

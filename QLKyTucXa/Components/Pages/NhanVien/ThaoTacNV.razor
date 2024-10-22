@@ -1,0 +1,118 @@
+﻿@page "/Addnhanvien/{id?}"
+
+@inject NavigationManager navigationManager
+@inject INhanVienServices Service
+@inject ITaiKhoanServices taikhoan
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+@if (!string.IsNullOrEmpty(id))
+{
+    <PageTitle>CapNhatThongTin</PageTitle>
+}
+else
+{
+    <PageTitle>ThemNhanVien</PageTitle>
+}
+<div class="addbook_form">
+    <div class="addbook_form_body">
+        <EditForm Model="nhanvien" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <h3>
+                @(!string.IsNullOrEmpty(id) ? "Cập nhật nhân viên" : "Thêm nhân viên")
+            </h3>
+            <br />
+            <div class="form-group row">
+                <label for="HoTen" class="col-form-label col-sm-2">Họ và Tên:</label>
+                <div class="col-sm-10">
+                    <InputText id="HoTen" class="form-control" @bind-Value="nhanvien.HoTen" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="Sdt" class="col-form-label col-sm-2">Số điện thoại:</label>
+                <div class="col-sm-10">
+                    <InputText id="Sdt" class="form-control" @bind-Value="nhanvien.Sdt" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="DiaChi" class="col-form-label col-sm-2">Địa chỉ:</label>
+                <div class="col-sm-10">
+                    <InputText id="DiaChi" class="form-control" @bind-Value="nhanvien.DiaChi" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="ChucVu" class="col-form-label col-sm-2">Chức vụ:</label>
+                <div class="col-sm-10">
+                    <InputText id="ChucVu" class="form-control" @bind-Value="nhanvien.ChucVu" />
+                </div>
+            </div>
+            <br/>
+            <div class="form-group row">
+                <label for="TaiKhoan" class="col-form-label col-sm-2">Tài khoản:</label>
+                <div class="col-sm-10">
+                    <InputSelect id="TaiKhoan" class="form-control" @bind-Value="nhanvien.Iduser" > 
+                        <option value="">Chọn tài khoản</option>
+                        @foreach(var lap in tk)
+                        {
+                            <option value="@lap.Iduser">@lap.TenDangNhap</option>
+                        }
+                    </InputSelect>
+                </div> 
+            </div>
+            <br/>
+            <div class="d-flex justify-content-between">
+                <MudButton OnClick="HandleValidSubmit" Variant="Variant.Filled" Color="Color.Primary">Lưu</MudButton>
+                <MudSnackbarProvider />
+                <MudButton OnClick="quaylai" Variant="Variant.Filled" Color="Color.Warning">Quay lại</MudButton>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? id { get; set; }
+    public List<Taikhoan> tk = new List<Taikhoan>();
+    public Nhanvien nhanvien { get; set; } = new Nhanvien();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            nhanvien = await Service.GetPhongByIdAsync(id);
+        }
+        tk = await taikhoan.GettaikhoanAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrEmpty(nhanvien.IdnhanVien))
+        {
+            Snackbar.Add("Thêm sinh viên thành công!", Severity.Success, config => { config.VisibleStateDuration = 300; });
+            await Task.Delay(1000);
+            nhanvien.IdnhanVien = GenerateCode();
+            await Service.AddPhongAsync(nhanvien);
+        }
+        else
+        {
+            Snackbar.Add("Cập nhật sinh viên thành công!", Severity.Success, config => { config.VisibleStateDuration = 300; });
+            await Task.Delay(1000);
+            await Service.UpdatePhongAsync(nhanvien);
+        }
+        navigationManager.NavigateTo("/nhanvien");
+    }
+
+    private void quaylai()  
+    {
+        navigationManager.NavigateTo("/nhanvien");
+    }
+
+    private string GenerateCode()
+    {
+        return Guid.NewGuid().ToString();
+    }
+}
+

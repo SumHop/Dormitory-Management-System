@@ -1,0 +1,135 @@
+﻿@if (sinhvien != null)
+{
+    if (id != null && !string.IsNullOrEmpty(id) && hopdong != null && !string.IsNullOrEmpty(hopdong.TrangThai))
+    {
+        if (hopdong.TrangThai == "Đang chờ phê duyệt")
+        {
+            if (selectedPhong != null && phongValidationDictionary.TryGetValue(selectedPhong.MaPhong, out bool validrr) && validrr)
+            {
+                <div class="modal" tabindex="-1" role="dialog" style="display:@(showBookingModal ? "block" : "none");">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-body">
+                                <h5 class="modal-title">Phòng đã đủ người. Vui lòng chọn phòng khác!</h5>
+                                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="modal" tabindex="-1" role="dialog" style="display:@(showBookingModal ? "block" : "none");">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Xác nhận cập nhật phòng</h5>
+                            </div>
+                            <div class="modal-footer">
+                                <MudButton Variant="Variant.Filled" @onclick="capnhatmaphong" Color="Color.Primary">Xác nhận</MudButton>
+                                <MudSnackbarProvider />
+                                <MudButton Variant="Variant.Filled" @onclick="CloseModal" Color="Color.Secondary">Hủy</MudButton>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    }
+    else if (hopdong!=null && hopdong.TrangThai != "Đang chờ phê duyệt")
+    {
+        <div class="modal" tabindex="-1" role="dialog" style="display:@(showBookingModal ? "block" : "none");">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <div class="modal-footer">
+                            <h5 class="modal-title">Bạn đã có phòng rồi!</h5>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (hopdong == null || string.IsNullOrEmpty(hopdong.MaPhong))
+    {
+        if (selectedPhong != null && phongValidationDictionary.TryGetValue(selectedPhong.MaPhong, out bool validr) && !validr)
+        {
+            <div class="modal" tabindex="-1" role="dialog" style="display:@(showBookingModal ? "block" : "none");">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Xác Nhận Đặt Phòng</h5>
+                            <button type="button" class="close" @onclick="CloseModal">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Bạn có chắc chắn muốn đặt phòng này?</p>
+                            <p><strong>Tên Phòng:</strong> @selectedPhong?.TenPhong</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" @onclick="ConfirmBooking">Xác Nhận</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="modal" tabindex="-1" role="dialog" style="display:@(showBookingModal ? "block" : "none");">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-body">
+                            <h5 class="modal-title">Phòng đã đủ người. Vui lòng chọn phòng khác!</h5>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="modal" tabindex="-1" role="dialog" style="display:@(showBookingModal ? "block" : "none");">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <div class="modal-footer">
+                            <h5 class="modal-title">Bạn đã đăng ký. Vui lòng đợi!</h5>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="modal" tabindex="-1" role="dialog" style="display:@(showBookingModal ? "block" : "none");">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <h5 class="modal-title">Bạn cần thêm thông tin của mình thì mới có thể đặt phòng đươc!</h5>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Parameter] public string id { get; set; }
+    [Parameter] public ClaimsPrincipal? user { get; set; }
+    [Parameter] public Hopdong hopdong { get; set; }
+    [Parameter] public Sinhvien? sinhvien { get; set; }
+    [Parameter] public Phong? selectedPhong { get; set; }
+    [Parameter] public bool showBookingModal { get; set; }
+    [Parameter] public EventCallback capnhatmaphong { get; set; }
+    [Parameter] public EventCallback ConfirmBooking { get; set; }
+    [Parameter] public EventCallback CloseModal { get; set; }
+    [Parameter] public Dictionary<string, bool> phongValidationDictionary { get; set; }
+}

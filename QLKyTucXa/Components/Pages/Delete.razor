@@ -1,0 +1,27 @@
+﻿@if (xacnhan)
+{
+    <div class="confirm-dialog-container">
+        <div class="confirm-dialog">
+            <h3>
+                Xác nhận xóa?
+            </h3>
+            <div class="d-flex-row justify-content-end mt-3">
+                <MudButton Variant="Variant.Filled" OnClick="OnCancel" Color="Color.Error">Thoát</MudButton>
+                <MudButton Variant="Variant.Filled" @onclick="OnOK" Color="Color.Primary">Xác nhận</MudButton>
+                <MudSnackbarProvider />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool xacnhan { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback OnOK { get; set; }
+}
+

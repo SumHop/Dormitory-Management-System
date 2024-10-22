@@ -1,0 +1,700 @@
+﻿@page "/"
+@inject IPhongServices PhongServices
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IHopDongServices HopDongServices
+@inject ISinhVienServices SinhVienServices
+@inject INhanVienServices NhanVienServices
+@inject IHoaDonServices HoaDonServices
+@inject IDichVuServices DichVuServices
+@inject ISnackbar Snackbar
+@inject LuuBien luubien
+@inject IYeuCauDoiTraPhongService YeuCauDoiTraPhongService
+
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin, Employee, User")]
+
+<PageTitle>Home</PageTitle>
+<style>
+    .container {
+        display: flex;
+        justify-content: space-between; /* Căn giữa khoảng cách giữa các phần tử */
+        gap: 100px; /* Khoảng cách giữa các phần tử */
+    }
+    .centered-td {
+        text-align: center;
+    }
+    .room-box {
+        width: 100px;
+        height: 100px;
+        border: 1px solid #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        cursor: pointer;
+        text-align: center;
+    }
+        .room-box.booked {
+            background-color: #d3d3d3;
+            cursor: default;
+        }
+    .invoice-card {
+        background-color: #F1F8E9;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .modal {
+        display: block;
+        position: fixed;
+        z-index: 1050;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+</style>
+
+<AuthorizeView Roles="User">
+    <Authorized Context="authorizedContext">
+        <div class="container">
+            @if (userExists)
+            {
+                @if (luubien.IdPhong is null)
+                {
+                    <div class="col-md-4">
+                        <h6>Phòng của bạn là:</h6>
+                        <div class="card mb-2" style="background-color: #BDBDBD;">
+                            <div class="card-body" style="color: #333;">
+                                <h5 class="card-title">Chưa có Phòng</h5>
+                                <a class="card-title" href="/phong">Đăng ký ngay</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (bien == "Đang chờ phê duyệt")
+                {
+                    <div class="col-md-4">
+                        <h6>Phòng của bạn là:</h6>
+                        <div class="card mb-3" style="background-color: #EFEBE9;">
+                            <div class="card-body" style="color: #333;">
+                                <h5 class="card-title">Chờ xét duyệt</h5>
+                                <div>
+                                    <button class="btn btn-secondary" @onclick="sua">Sửa phòng</button>
+                                    <button class="btn btn-danger" @onclick="xoa">Hủy</button>
+                                </div>
+                            </div>
+                        </div>
+                        <Delete @rendermode="InteractiveServer" xacnhan="xacnhanxoa" OnCancel="CancelDelete" OnOK="okDelete"></Delete>
+                    </div>
+                }
+                else
+                {
+                    <div class="col-md-2">
+                        <h6>Phòng của bạn là:</h6>
+                        <div class="card mb-2" style="background-color: #EF9A9A;">
+                            <div class="card-body" style="color: #333;">
+                                <h5 class="card-title">@phong.TenPhong</h5>
+                                <p class="card-text"><strong>Khu:</strong> @phong.Khu</p>
+                                <p class="card-text"><strong>Tầng:</strong> @phong.Tang</p>
+                                <p class="card-text"><strong>Số giường:</strong> @phong.SoGiuong</p>
+                            </div>
+                            
+                        </div>
+                        <div class="card mb-2" style="background-color: #FFCC99;">
+                            <h6>Gửi yêu cầu:</h6>
+                            <MudButton Variant="Variant.Text" @onclick="ToggleChangeRoomModal">Đổi phòng</MudButton>
+                            <MudButton Variant="Variant.Text" @onclick="ToggleCheckOutModal">Trả phòng</MudButton>
+
+                        </div>
+
+                    </div>                    
+                }
+            }
+            else
+            {
+                <div class="col-md-4">
+                    <div class="card mb-2" style="background-color: #FFE0B2;">
+                        <div class="card-body" style="color: #333;">
+                            <a href="/Addsinhvien">Cập nhật thông tin</a>
+                        </div>
+                    </div>
+                </div>
+            }
+            @*    //Đổi phòng
+            *@         
+            @if (isChangeRoomModalOpen)
+            {
+                <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">YÊU CẦU ĐỔI PHÒNG</h5>
+                                <button type="button" class="btn-close" @onclick="ToggleChangeRoomModal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div>
+                                    <label for="currentRoom">Phòng hiện tại:</label>
+                                    <input id="currentRoom" value="@phong.TenPhong" readonly />
+                                </div>
+                                <div>
+                                    <label for="newRoom">Phòng mới:</label>
+                                    <select id="newRoom" @bind="newRoomId">
+                                        <option value="">Chọn phòng mới</option>
+                                        @foreach (var lap in availableRooms) // Make sure 'availableRooms' only contains empty rooms
+
+                                        {
+                                            <option value="@lap.MaPhong">@lap.TenPhong</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="reason">Lý do:</label>
+                                    <textarea id="reason" @bind="reason" placeholder="Nhập lý do đổi phòng"></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" @onclick="ToggleChangeRoomModal">Hủy</button>
+                                <button class="btn btn-primary" @onclick="OpenConfirmationModal">Gửi yêu cầu</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (isConfirmationModalOpen)
+            {
+                <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">XÁC NHẬN ĐỔI PHÒNG</h5>
+                                <button type="button" class="btn-close" @onclick="CloseConfirmationModal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Bạn có chắc chắn muốn đổi sang phòng <strong>@availableRooms.FirstOrDefault(x => x.MaPhong == newRoomId)?.TenPhong</strong> không?</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" @onclick="CloseConfirmationModal">Hủy</button>
+                                <button class="btn btn-primary" @onclick="SubmitChangeRequest">Xác Nhận</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+@*         Trả phòng
+ *@
+            @if (isCheckOutModalOpen)
+            {
+                <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">YÊU CẦU TRẢ PHÒNG</h5>
+                                <button type="button" class="btn-close" @onclick="ToggleCheckOutModal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div>
+                                    <label for="checkOutReason">Lý do:</label>
+                                    <textarea id="checkOutReason" @bind="reasonForCheckOut" placeholder="Nhập lý do trả phòng"></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" @onclick="ToggleCheckOutModal">Hủy</button>
+                                <button class="btn btn-primary" @onclick="SubmitCheckOutRequest">Gửi yêu cầu</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Hóa đơn hiển thị bên phải -->
+            <div class="invoice-card">
+                <h4 style="text-align: center;">THÔNG TIN HÓA ĐƠN</h4>
+                @if (dungdehienthiCHTD.Any())
+                {
+                    if(luubien.bienkiemtraguihoadon == true)
+                    {
+                        <ul>
+                            <li>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div>
+                                        <strong>Mã HD: </strong> @hoadon?.MaHd <br />
+                                    </div>
+                                    <div style="margin-right: 106px;">
+                                        <strong>Phòng: </strong>
+                                            @foreach (var i in cacphong)
+                                            {
+                                                if (i.MaPhong == hoadon?.MaPhong)
+                                                {
+                                                    @i.TenPhong
+                                                }
+                                            }
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div>
+                                        <strong>Ngày lập: </strong> @hoadon?.NgayLapHd?.ToString("dd/MM/yyyy")
+                                    </div>
+                                    <div>
+                                        <strong>Nhân viên: </strong>
+                                        @foreach (var i in cacnhanvien)
+                                        {
+                                            if (i.IdnhanVien == hoadon?.IdnhanVien)
+                                            {
+                                                @i.HoTen
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <br />
+                        <MudTable Items="@dungdehienthiCHTD" Hover="true" Breakpoint="Breakpoint.Sm" Style="background-color:#F1F8E9;">
+                            <HeaderContent>
+                                <MudTh>Tên Dịch vụ</MudTh>
+                                <MudTh>Chỉ số đầu </MudTh>
+                                <MudTh>Chỉ số cuối</MudTh>
+                                <MudTh>Chỉ số tiêu thụ</MudTh>
+                                <MudTh>Đơn giá</MudTh>
+                                <MudTh>Thành tiền</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="MaDv">
+                                    @foreach (var i in cacdichvu)
+                                    {
+                                        if (i.MaDv == context.MaDv)
+                                        {
+                                            @i.TenDichVuBatBuoc
+                                        }
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="ChiSoDau" Class="centered-td">@context.ChiSoDau</MudTd>
+                                <MudTd DataLabel="ChiSoCuoi" Class="centered-td">@context.ChiSoCuoi</MudTd>
+                                <MudTd DataLabel="ChiSoTieuThu" Class="centered-td">@(context.ChiSoCuoi - context.ChiSoDau)</MudTd>
+                                <MudTh DataLabel="DonGia" Class="centered-td">
+                                    @foreach (var i in cacdichvu)
+                                    {
+                                        if (i.MaDv == context.MaDv)
+                                        {
+                                            @i.DonGia.Value.ToString("N0")
+                                        }
+                                    }
+                                </MudTh>
+                                <MudTh DataLabel="ThanhTien" Class="centered-td">
+                                    @foreach (var i in cacdichvu)
+                                    {
+                                        if (i.MaDv == context.MaDv)
+                                        {
+                                            if (i.MaDv != "dd3791cb-3070-4b3a-b3f1-64c1fbb5916a")
+                                            {
+                                                @(((context.ChiSoCuoi - context.ChiSoDau) * i.DonGia ?? 0).ToString("N0"))
+                                            }
+                                            else
+                                            {
+                                                @((i.DonGia * phong?.SoNguoiO ?? 0).ToString("N0"))
+                                            }
+                                        }
+                                    }
+                                </MudTh>
+                            </RowTemplate>
+                        </MudTable>
+                        <br />
+                        <div style="display: flex; justify-content: flex-end; align-items: center;">
+                            <label style="margin-right: 30px; font-weight: bold;">Tổng tiền</label>
+                            <span style="margin-right: 20px; font-weight: bold;">@tongtien.ToString("N0")</span>
+                        </div>
+                       @*  <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="ToggleTransferInfo">Thanh toán</MudButton>
+                        </div> *@
+                        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       @onclick="ToggleTransferInfo"
+                                       Disabled="@isPaymentProcessing">
+                                <!-- Disable nút khi đang xử lý -->
+                                Thanh toán
+                            </MudButton>
+
+                        </div>
+
+                        @if (showTransferInfo)
+
+                        {
+                            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 style="text-align: center;" class="modal-title">THANH TOÁN HÓA ĐƠN</h5>
+                                            <button type="button" class="btn-close" @onclick="ToggleTransferInfo"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="transfer-info d-flex justify-content-between align-items-center">
+                                                <!-- Thông tin chuyển khoản bên trái -->
+                                                <div class="payment-info" style="width: 60%;">
+                                                    <h5 style="text-align: center;">Thông tin chuyển khoản</h5>
+                                                    <p><strong>Ngân hàng:</strong> Ngân hàng MBBank</p>
+                                                    <p><strong>Số tài khoản:</strong> 0399836675</p>
+                                                    <p><strong>Chủ tài khoản:</strong> NGUYEN THI NGOC QUY</p>
+                                                    <p><strong>Số tiền:</strong> @tongtien.ToString("N0")</p>
+                                                    <p>
+                                                        <strong>Nội dung chuyển khoản:</strong> Thanh toán hóa đơn phòng
+                                                        @foreach (var i in cacphong)
+
+                                                        {
+
+                                                            if (i.MaPhong == hoadon?.MaPhong)
+
+                                                            {
+                                                                @i.TenPhong
+                                                            }
+
+                                                        }
+                                                    </p>
+                                                </div>
+
+                                                <!-- Mã QR bên phải -->
+                                                <div class="qr-code text-center" style="width: 35%;">
+                                                    <img src="/image/mb.png" alt="QR Code" style="max-height: 15rem; max-width: 100%; object-fit: contain;" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <MudButton Color="Color.Success" @onclick="ConfirmPayment">Xác nhận thanh toán</MudButton>
+                                            <MudButton Color="Color.Secondary" @onclick="ToggleTransferInfo">Hủy</MudButton>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                         
+                    }
+                    else
+                    {
+                        <p>Chưa có hóa đơn nào.</p>
+                    }
+                }
+                else
+                {
+                    <p>Chưa có hóa đơn nào.</p>
+                }
+            </div>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+<AuthorizeView Roles="Admin, Employee">
+    <Authorized>
+        <ThongKe cacdichvu="cacdichvu" cachoadon="hoadondathanhtoan" cthd="cacCTHD" tongphonghienco="cacphong" cachopdong="cachopdong" cacphong="cacphong"></ThongKe>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    //user
+    private ClaimsPrincipal? user;
+    private List<Hopdong> cachopdong = new List<Hopdong>();
+    private List<Sinhvien> cacsinhvien = new List<Sinhvien?>();
+    private List<Nhanvien> cacnhanvien = new List<Nhanvien?>();
+    private List<Phong> cacphong = new List<Phong>();
+    private List<Hoadon> cachoadon = new List<Hoadon>();
+    private List<Chitiethoadon> cacCTHD = new List<Chitiethoadon>();
+    private List<Chitiethoadon> dungdehienthiCHTD = new List<Chitiethoadon>();
+    private List<Dichvu> cacdichvu = new List<Dichvu>();
+    private Sinhvien? sinhvien = new Sinhvien();
+    private Hopdong? hopdong = new Hopdong();
+    private Hoadon hoadon = new Hoadon();
+    private Phong? phong = new Phong();
+    private string? bien, idToDelete, Mahd;
+    bool userExists;
+    double tongtien = 0;
+    private bool xacnhanxoa = false;
+    //admin, employee
+    private List<Hoadon> hoadondathanhtoan = new List<Hoadon>();
+    private bool showTransferInfo = false;     
+    private bool isPaymentProcessing = false;
+
+    // Đổi phòng
+    private bool isChangeRoomModalOpen = false;
+    private List<Phong> availableRooms => GetAvailableRoomsForMonth(); // List to hold available rooms
+    private string currentRoomId; // Current room ID
+    private string newRoomId; // New room ID
+    private string reason; // Reason for changing rooms
+    private bool isConfirmationModalOpen = false;
+
+    private List<Phong> GetAvailableRoomsForMonth()
+    {
+        var currentMonth = DateTime.Now.Month;
+        var currentYear = DateTime.Now.Year;
+
+        var roomsInHoadonThisMonth = cachoadon
+            .Where(hd => hd?.NgayLapHd?.Month == currentMonth && hd?.NgayLapHd?.Year == currentYear)
+            .Select(hd => hd?.MaPhong).ToList();
+
+        var roomsWithStudents = cachopdong
+            .Select(hdo => hdo.MaPhong)
+            .Distinct()
+            .ToList();
+
+        return cacphong.Where(p => p != null && !roomsInHoadonThisMonth.Contains(p.MaPhong) && !roomsWithStudents.Contains(p.MaPhong)).ToList();
+    }
+
+    // Method to toggle the modal
+    private void ToggleChangeRoomModal()
+    {
+        isChangeRoomModalOpen = !isChangeRoomModalOpen; // Toggle the change room modal state
+        if (!isChangeRoomModalOpen)
+        {
+            // Reset fields when closing the modal
+            newRoomId = string.Empty;
+            reason = string.Empty;
+        }
+    }
+
+    private void OpenConfirmationModal()
+    {
+        if (string.IsNullOrEmpty(newRoomId) || string.IsNullOrEmpty(reason))
+        {
+            Snackbar.Add("Bạn cần chọn phòng mới và nhập lý do!", Severity.Warning);
+            return; // Exit the method if validation fails
+        }
+        isConfirmationModalOpen = true; // Open confirmation modal
+    }
+
+    private void CloseConfirmationModal()
+    {
+        isConfirmationModalOpen = false; // Close confirmation modal
+    }
+
+  private async Task SubmitChangeRequest()
+{
+   if (!string.IsNullOrEmpty(newRoomId) && !string.IsNullOrEmpty(reason))
+    {
+        var changeRequest = new Yeucaudoitraphong
+        {
+            MaSinhVien = sinhvien.Mssv,
+            MaPhongHienTai = phong.MaPhong,
+            MaPhongMoi = newRoomId,
+            LyDoDoiPhong = reason,
+            TrangThai = "Đang chờ duyệt",
+            NgayYeuCau = DateTime.Now
+        };
+
+        Console.WriteLine($"Submitting request: {changeRequest.MaYeuCau}, {changeRequest.MaSinhVien}, {changeRequest.MaPhongHienTai}, {changeRequest.MaPhongMoi}, {changeRequest.LyDoDoiPhong}");
+
+        // Gửi yêu cầu thông qua dịch vụ
+        var result = await YeuCauDoiTraPhongService.SubmitRequestAsync(changeRequest);
+
+        // Kiểm tra kết quả trả về
+        if (result)
+        {
+            Snackbar.Add("Yêu cầu đổi phòng đã được gửi!", Severity.Success);
+            // Có thể tải lại danh sách yêu cầu nếu cần
+        }
+        else
+        {
+            Snackbar.Add("Có lỗi xảy ra khi gửi yêu cầu!", Severity.Error);
+        }
+
+        // Đóng các modal sau khi gửi
+        ToggleChangeRoomModal(); // Đóng modal đổi phòng
+        CloseConfirmationModal(); // Đóng modal xác nhận
+    }
+    else
+    {
+        Snackbar.Add("Bạn cần chọn phòng mới và nhập lý do!", Severity.Warning);
+    }
+}
+
+
+    //trả phòng
+    private bool isCheckOutModalOpen = false;
+private string reasonForCheckOut; // Reason for check-out
+
+// Toggle the visibility of the check-out modal
+private void ToggleCheckOutModal()
+{
+    isCheckOutModalOpen = !isCheckOutModalOpen; // Toggle the modal state
+    if (!isCheckOutModalOpen)
+    {
+        // Reset fields when closing the modal
+        reasonForCheckOut = string.Empty;
+    }
+}
+
+// Submit the check-out request
+private async Task SubmitCheckOutRequest()
+{
+    // Validate if the reason is provided
+    if (string.IsNullOrEmpty(reasonForCheckOut))
+    {
+        Snackbar.Add("Bạn cần nhập lý do trả phòng!", Severity.Warning);
+        return; // Exit the method if validation fails
+    }
+
+    // Create the check-out request object
+    var checkOutRequest = new Yeucaudoitraphong
+    {
+        MaSinhVien = sinhvien.Mssv,
+        MaPhongHienTai = phong.MaPhong,
+        LyDoTraPhong = reasonForCheckOut,
+        TrangThai = "Đang chờ duyệt",
+        NgayYeuCau = DateTime.Now
+    };
+
+    Console.WriteLine($"Submitting check-out request: {checkOutRequest.MaSinhVien}, {checkOutRequest.MaPhongHienTai}, {checkOutRequest.LyDoTraPhong}");
+
+    // Send the request through the service
+
+        var result = await YeuCauDoiTraPhongService.SubmitRequestAsync(checkOutRequest);
+
+
+
+        // Check the result returned
+    if (result)
+    {
+        Snackbar.Add("Yêu cầu trả phòng đã được gửi!", Severity.Success);
+        // Optionally refresh the list of requests if needed
+    }
+    else
+    {
+        Snackbar.Add("Có lỗi xảy ra khi gửi yêu cầu!", Severity.Error);
+    }
+
+    // Close the modal after submitting
+    ToggleCheckOutModal(); // Close the check-out modal
+}
+
+
+//thanh toán
+    private void ToggleTransferInfo()
+    {
+        showTransferInfo = !showTransferInfo;
+    }
+private async Task ConfirmPayment()
+{  
+    Snackbar.Add("Vui lòng chờ nhân viên xác nhận hóa đơn thanh toán!", Severity.Success, config =>
+            {
+                config.VisibleStateDuration = 400;
+                config.HideTransitionDuration = 100;
+                config.ShowTransitionDuration = 500;
+            });
+    await Task.Delay(3000); // Delay 3 giây (bạn có thể điều chỉnh thời gian này nếu cần)
+    ToggleTransferInfo(); // Đóng modal
+    isPaymentProcessing = true; // Cập nhật trạng thái thanh toán
+}
+
+  
+    protected override async Task OnInitializedAsync()
+    {
+        // Lấy thông tin người dùng hiện tại từ AuthenticationStateProvider
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        cacdichvu = await DichVuServices.GetDichvuAsync();
+        cacphong = await PhongServices.GetPhongAsync();
+        cacsinhvien = await SinhVienServices.laydssinhvien();
+        cachopdong = await HopDongServices.GetPhongAsync();
+        cacnhanvien = await NhanVienServices.GetPhongAsync();
+        hoadondathanhtoan = await HoaDonServices.GetHoaDonAsync();
+        cacCTHD = await HoaDonServices.GetCTHDAsync();
+        if (!user.IsInRole("Admin") && !user.IsInRole("Employee"))
+        {
+            //kiểm tra sinh viên đã có thông tin hay chưa
+            userExists = cacsinhvien.Any(i => i.Iduser == user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+            //kiểm tra xem sinh vien đã đăng ký phòng hay chưa
+            sinhvien = await SinhVienServices.GetByIdUserAsync(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+            if (sinhvien != null)
+            {
+                foreach (var t in cachopdong)
+                {
+                    if (t.Mssv == sinhvien.Mssv && !string.IsNullOrEmpty(sinhvien.Mssv))
+                    {
+                        luubien.IdPhong = t.MaPhong;
+                        bien = t.TrangThai;
+                        idToDelete = t.SoHopDong;
+                        break;
+                    }
+                    else
+                        luubien.IdPhong = null;
+                }
+            }
+            phong = await PhongServices.GetPhongByIdAsync(luubien.IdPhong);
+            hopdong = await HopDongServices.GetPhongByIdAsync(idToDelete);
+            cachoadon = await HoaDonServices.GetHoaDonByTrangThaiAsync();
+            if (user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString() != null)
+            {
+                dungdehienthiCHTD = GetChiTietHoaDon(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+
+                if (dungdehienthiCHTD.Any())
+                {
+                    Mahd = dungdehienthiCHTD.FirstOrDefault()?.MaHd;
+                }
+
+                hoadon = await HoaDonServices.GetHoaDonnByIdAsync(Mahd);
+
+                tongtien = dungdehienthiCHTD.Sum(item =>
+                {
+                    foreach (var dv in cacdichvu)
+                    {
+                        if (dv.MaDv == item.MaDv)
+                        {
+                            if (dv.MaDv != "dd3791cb-3070-4b3a-b3f1-64c1fbb5916a")
+                                return (item.ChiSoCuoi - item.ChiSoDau) * dv.DonGia ?? 0;
+                            else
+                                return dv.DonGia * phong?.SoNguoiO ?? 0;
+                        }
+                    }
+                    return 0; 
+                });
+            }
+        }
+        else
+        {
+            // hoadondathanhtoan = await HoaDonServices.GetHoaDonByDaThanhToanAsync();
+        }
+    }
+    //user
+    public List<Chitiethoadon> GetChiTietHoaDon(string userId)
+    {
+        var result = from cthd in cacCTHD    join dv in cacdichvu on cthd.MaDv equals dv.MaDv
+                     join hd in cachoadon on cthd.MaHd equals hd.MaHd
+                     join p in cacphong on hd.MaPhong equals p.MaPhong
+                     join hdg in cachopdong on p.MaPhong equals hdg.MaPhong
+                     join sv in cacsinhvien on hdg.Mssv equals sv.Mssv      where sv.Iduser == userId
+                     select cthd;
+        return result.ToList();
+    }
+    void sua() => Navigation.NavigateTo($"/phong?SoHopdong={hopdong?.SoHopDong}");
+    private void xoa() => xacnhanxoa = true;
+    private void CancelDelete() => xacnhanxoa = false;
+    private async Task okDelete()
+    {
+        Snackbar.Add("Xóa thành công!", Severity.Success);
+        await Task.Delay(900);
+        if (!string.IsNullOrEmpty(idToDelete))
+        {
+            await HopDongServices.DeletehopdongAsync(idToDelete);
+            xacnhanxoa = false;
+            Navigation.NavigateTo("/", true);
+        }
+    }
+
+    //admin, employee
+    private async Task truyvantonghoadon()
+    {
+        foreach (var i in hoadondathanhtoan)
+        {
+            cacCTHD = await HoaDonServices.GetChiTietHoaDonByMaHDAsync(i.MaHd);
+        }
+        var result = (from hoadon in hoadondathanhtoan
+                      join chitiet in cacCTHD on hoadon.MaHd equals chitiet.MaHd
+                      join dichvu in cacdichvu on chitiet.MaDv equals dichvu.MaDv
+                      where dichvu.LoaiDichVu == "DV Bắt Buộc" && hoadon.TrangThai == "Đã thanh toán" && hoadon.MaPhong != null
+                      group hoadon by hoadon.MaHd into g
+                      select g.Key).ToList();
+        // Loại bỏ các hóa đơn trùng lặp dựa trên MaHd
+      //tongsohoadonbatbuoc = result.Count;
+    }
+}

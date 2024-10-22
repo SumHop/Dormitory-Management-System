@@ -1,0 +1,191 @@
+﻿@page "/chitiethopdong"
+@inject ISinhVienServices SinhVienServices
+@inject INhanVienServices NhanVienServices
+@inject IHopDongServices HopDongServices
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IPhongServices PhongServices
+@inject IThongBaoServices ThongBaoServices
+@inject ISnackbar Snackbar
+@inject LuuBien luubien
+@rendermode InteractiveServer
+<style>
+
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+    }
+
+    .header, .footer {
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .content {
+        margin-top: 20px;
+    }
+
+        .content p {
+            margin: 5px 0;
+        }
+
+        .content .section {
+            margin-top: 20px;
+        }
+
+    .signatures {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 40px;
+    }
+
+        .signatures div {
+            text-align: center;
+        }
+
+    .checkbox-button-container {
+        display: flex;
+        align-items: center;
+        gap: 500px; /* Khoảng cách giữa checkbox-container và button */
+    }
+
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 5px; /* Khoảng cách giữa checkbox và label */
+    }
+</style> 
+<div class="header">
+    <p>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
+    <p>Độc lập - Tự do - Hạnh phúc</p>
+    <p><br></p>
+    <p>HỢP ĐỒNG THUÊ CHỖ Ở NỘI TRÚ</p>
+</div>
+<div class="content">
+    <p>Hôm nay, Ngày @NgayHienTai @ThangHienTai Năm @NamHienTai, Tại Ký Túc Xá Trường Bia</p>
+    <p>Hai bên gồm:</p>
+    <div class="section">
+        <p><strong>BÊN CHO THUÊ (Bên A): TRƯỜNG: Bia</strong></p>
+        <p>Đại diện: @nhanvien.HoTen. Đơn vị công tác: Trường Bia.</p>
+        <p>Chức vụ: @nhanvien.ChucVu. Số điện thoại: @nhanvien.Sdt</p>
+    </div>
+    <div class="section">
+        <p><strong>BÊN THUÊ CHỖ Ở (Bên B):</strong></p>
+        <p>Họ tên sinh viên: @sinhvien.TenSinhVien.    Nam (Nữ): @sinhvien.GioiTinh.</p>
+        <p>Năm sinh: @sinhvien.NgaySinh?.ToString("dd/MM/yyyy"). Mã SV: @sinhvien.Mssv.</p>
+        <p>Lớp: @sinhvien.Lop. Khoa: @sinhvien.Khoa. </p>
+        <p>Số điện thoại: @sinhvien.Sdt. Email: @user.FindFirst(ClaimTypes.Email)?.Value.</p>
+        <p>Hộ khẩu thường trú: @sinhvien.DiaChi.</p>
+    </div>
+    <p>Bên A được ủy quyền bởi hiệu trưởng Trường Bia.</p>
+    <p>Cùng bên B, thống nhất ký hợp đồng cho thuê chỗ ở nội trú tại Ký túc xá Trường Bia. Với các điều khoản sau:</p>
+    <div class="section">
+        <p><strong>Điều 1:</strong> Bên A đồng ý cho bên B thuê 01 chỗ ở tại phòng số: @phong.TenPhong tầng: @phong.Tang khu: @phong.Khu. Ký túc xá Trường Bia</p>
+    </div>
+    <div class="section">
+        <p><strong>Điều 2:</strong> Giá cả thời gian và phương thức thanh toán:</p>
+        <p>2.1. Đơn giá cho thuê 200.000 đồng/tháng</p>
+        <p>2.3. Thời gian cho thuê: 01 năm học 10 tháng tính từ ngày @NgayDauThang đến ngày @NgayKetThuc</p>
+        <p>Chấm dứt hợp đồng khi hết hạn hiệu lực của hợp đồng</p>
+    </div>
+</div>
+<div class="section">
+    <div class="checkbox-button-container">
+        <div class="checkbox-container">
+            <input type="checkbox" @bind="isChecked" id="agreementCheckbox" />
+            <label for="agreementCheckbox">Tôi đồng ý với hợp đồng ở trên</label>
+        </div>
+        <MudButton Variant="Variant.Filled" @onclick="Continue" Color="Color.Primary" Disabled="!isChecked">Xác nhận</MudButton>
+        <MudSnackbarProvider />
+    </div>
+</div>
+<br/>
+@code{
+    private DateTime NgayThangNam, NgayDauThang, NgayKetThuc;
+    private string NgayHienTai, ThangHienTai, NamHienTai;
+    private Sinhvien? sinhvien = new Sinhvien();
+    private Nhanvien nhanvien = new Nhanvien();
+    private Phong? phong = new Phong();
+    private ClaimsPrincipal? user;
+    private string? idphong { get; set; }
+    private Hopdong hopdong = new Hopdong();
+    private bool isChecked = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        // Khởi tạo NgayThangNam với ngày hiện tại
+        NgayThangNam = DateTime.Now;
+
+        // Tách ngày, tháng, và năm từ chuỗi NgayThangNam
+        DateTime now = DateTime.Now;
+        NgayHienTai = now.Day.ToString();
+        ThangHienTai = now.ToString("MMMM", new System.Globalization.CultureInfo("vi-VN")); // Tên tháng bằng tiếng Việt
+        NamHienTai = now.Year.ToString();
+        // Tạo ngày 5/9 của năm hiện tại
+        NgayDauThang = new DateTime(int.Parse(NamHienTai), 9, 5);
+
+        // Tạo ngày 1/7 của năm tiếp theo
+        NgayKetThuc = new DateTime(int.Parse(NamHienTai) + 1, 7, 1);
+
+        sinhvien = await SinhVienServices.GetByIdUserAsync(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+        nhanvien = await NhanVienServices.GetPhongByIdAsync("bb76a518-2776-4217-ba3d-10e590c167dd");
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("phongId", out var phongIdValue))
+        {
+            idphong = phongIdValue;
+        };
+        luubien.IdPhong = idphong;
+        phong = await PhongServices.GetPhongByIdAsync(idphong);
+    }
+
+    private async Task Continue()
+    {
+        // Hiển thị Snackbar
+        Snackbar.Add("Hợp đồng đã được gửi đi phê duyệt!", Severity.Success);
+
+        // Đợi một thời gian để Snackbar hiển thị
+        await Task.Delay(2000);
+
+            hopdong.SoHopDong = Guid.NewGuid().ToString();
+            hopdong.NgayLap = DateOnly.FromDateTime(NgayThangNam);
+            hopdong.ThoiGianBatDau = DateOnly.FromDateTime(NgayDauThang);
+            hopdong.ThoiGianKetThuc = DateOnly.FromDateTime(NgayKetThuc);
+            hopdong.IdnhanVien = nhanvien.IdnhanVien;
+            hopdong.Mssv = sinhvien.Mssv;
+            hopdong.MaPhong = phong.MaPhong;
+            hopdong.TrangThai = "Đang chờ phê duyệt";
+            await HopDongServices.AddhopdongAsync(hopdong);
+
+            // Tạo thông báo mới
+            var thongBao = new ThongBao
+            {
+                MaThongBao = Guid.NewGuid().ToString(), 
+                NoiDung = "Hợp đồng thuê chỗ ở nội trú đã được gửi đi phê duyệt.",
+                ThoiGianThongBao = DateTime.Now,
+                TrangThaiThongBao = false, 
+                Iduser = user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString() 
+            };
+
+            // Tạo thông báo cho Admin 
+            var thongBao2 = new ThongBao
+            {
+                MaThongBao = Guid.NewGuid().ToString(),
+                NoiDung = "Có hợp đồng cần bạn phê duyệt.",
+                ThoiGianThongBao = DateTime.Now,
+                TrangThaiThongBao = false,
+                Iduser = "2177c075-a0b4-4df4-acf9-c539bc824ec2"
+            };
+
+            // Lưu thông báo vào cơ sở dữ liệu
+            await ThongBaoServices.AddThongBaoAsync(thongBao);
+            await ThongBaoServices.AddThongBaoAsync(thongBao2);
+
+
+            // Chuyển hướng sau khi gửi hợp đồng
+            Navigation.NavigateTo("/hoantatdatphong", forceLoad: true);
+    }
+}
+
+

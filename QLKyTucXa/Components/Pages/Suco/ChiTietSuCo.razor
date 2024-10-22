@@ -1,0 +1,90 @@
+﻿@page "/chitiet/{maThongBao}"
+@inject IThongBaoServices ThongBaoServices
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<PageTitle>CHI TIẾT SỰ CỐ</PageTitle>
+
+<h3>CHI TIẾT SỰ CỐ</h3>
+
+@if (isLoading)
+{
+    <p>Đang tải dữ liệu...</p>
+}
+else if (thongbao == null)
+{
+    <p>Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.</p>
+}
+else
+{
+    <p><strong>Nội dung:</strong> @thongbao.NoiDung</p>
+    <p><strong>Thời gian:</strong> @thongbao.ThoiGianThongBao?.ToString("dd/MM/yyyy HH:mm:ss")</p>
+    <p><strong>Trạng thái:</strong> @(thongbao.TrangThaiThongBao.HasValue && thongbao.TrangThaiThongBao.Value ? "Đã xử lý" : "Chưa xử lý")</p>
+
+    <h4>Hình ảnh:</h4>
+    @if (thongbao.HinhAnh != null && thongbao.HinhAnh.Count > 0)
+    {
+        foreach (var img in thongbao.HinhAnh)
+        {
+            if (!string.IsNullOrEmpty(img))
+            {
+                <img src="@img" alt="Hình ảnh sự cố" style="max-width: 200px; margin-right: 10px;" />
+            }
+        }
+    }
+    else
+    {
+        <p>Không có hình ảnh nào được đính kèm.</p>
+    }
+
+    <div style="margin-top: 20px;">
+        <a href="/nghiemthusuco" class="btn btn-primary">Quay Lại</a>
+        @if (!thongbao.TrangThaiThongBao.HasValue || !thongbao.TrangThaiThongBao.Value)
+        {
+            <button class="btn btn-success" @onclick="MarkAsHandled">Đã Xử Lý</button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string MaThongBao { get; set; }
+
+    private ThongBao thongbao;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            thongbao = await ThongBaoServices.GetThongBaoByIdAsync(MaThongBao);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Có lỗi xảy ra: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            isLoading = false; // Mark as loaded
+        }
+    }
+
+    private async Task MarkAsHandled()
+    {
+        if (thongbao != null)
+        {
+            try
+            {
+                await ThongBaoServices.DanhDauThongBaoAsync(MaThongBao);
+                thongbao.TrangThaiThongBao = true; // Update status on UI
+                Snackbar.Add("Trạng thái thông báo đã được cập nhật thành 'Đã xử lý'.", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add("Có lỗi khi cập nhật trạng thái: " + ex.Message, Severity.Error);
+            }
+        }
+    }
+}

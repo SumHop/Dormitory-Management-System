@@ -1,0 +1,143 @@
+﻿@page "/Addhoadon/{id?}"
+@inject NavigationManager navigationManager
+@inject IHoaDonServices HoaDonServices
+@inject IHopDongServices HopDongServices
+@inject IPhongServices PhongServices
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+@if (!string.IsNullOrEmpty(id))
+{
+    <PageTitle>CapNhatThongTin</PageTitle>
+}
+
+<div class="addbook_form">
+    <div class="addbook_form_body">
+        <EditForm Model="hoadon" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <h3>
+                @(!string.IsNullOrEmpty(id) ? "Cập Nhật Hóa Đơn" : "Thêm Hóa Đơn")
+            </h3>
+            <br />
+            <div class="form-group row">
+                <label for="PhuongThucThanhToan" class="col-form-label col-sm-2">PT thanh Toán:</label>
+                <div class="col-sm-10">
+                    <InputText id="PhuongThucThanhToan" class="form-control" @bind-Value="hoadon.PhuongThucThanhToan" />
+                </div>
+            </div>
+            <br/>
+            <div class="form-group row">
+                <label for="MaPhong" class="col-form-label col-sm-2">Phòng cũ:</label>
+                <div class="col-sm-10">
+                    @foreach (var lap in cacphong)
+                        {
+                            if (hoadon.MaPhong == lap.MaPhong)
+                            {
+                            <span class="form-control" style="background-color: #f0f0f0;"> @lap.TenPhong</span>
+                            }
+                        }
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="MaPhong" class="col-form-label col-sm-2">Phòng mới:</label>
+                <div class="col-sm-10">
+                    <InputSelect id="MaPhong" class="form-control" @bind-Value="luuphongtamthoi">
+                        <option value="">Chọn phòng</option> <!-- Hiển thị tùy chọn "Chọn Phòng" -->
+                        @foreach (var lap in availableRooms)
+                        {
+                            <option value="@lap.MaPhong">@lap.TenPhong</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+
+            <br />
+            <div class="d-flex justify-content-between">
+                <MudButton OnClick="HandleValidSubmit" Variant="Variant.Filled" Color="Color.Primary">Lưu</MudButton>
+                <MudSnackbarProvider />
+                <MudButton OnClick="quaylai" Variant="Variant.Filled" Color="Color.Primary">Quay lại</MudButton>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? id { get; set; }
+
+    public Hoadon hoadon { get; set; } = new Hoadon();
+    private List<Hoadon> cachoadon = new List<Hoadon>();
+    private List<Phong> cacphong = new List<Phong>();
+    private List<Hopdong> cachopdong = new List<Hopdong>();
+    private string? luuphongtamthoi;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cachoadon = await HoaDonServices.GetHoaDonAsync();
+        cacphong = await PhongServices.GetPhongAsync();
+        cachopdong = await HopDongServices.GetPhongAsync();
+        if (!string.IsNullOrEmpty(id))
+        {
+            hoadon = await HoaDonServices.GetHoaDonnByIdAsync(id);
+        }
+    }
+
+    // Lọc danh sách phòng
+    private List<Phong> GetAvailableRoomsForMonth()
+    {
+        var currentMonth = DateTime.Now.Month;
+        var currentYear = DateTime.Now.Year;
+
+        // Lấy danh sách phòng đã có trong hóa đơn của tháng hiện tại
+        var roomsInHoadonThisMonth = cachoadon
+            .Where(hd => hd?.NgayLapHd?.Month == currentMonth && hd?.NgayLapHd?.Year == currentYear)
+            .Select(hd => hd?.MaPhong).ToList();
+        // Lấy danh sách phòng đã có học sinh
+        var roomsWithStudents = cachopdong
+            .Select(hdo => hdo.MaPhong)
+            .Distinct()
+            .ToList();
+
+        return cacphong.Where(p => p != null && !roomsInHoadonThisMonth.Contains(p.MaPhong) && roomsWithStudents.Contains(p.MaPhong)).ToList();
+    }
+    private List<Phong> availableRooms => GetAvailableRoomsForMonth();
+
+    private async Task HandleValidSubmit()
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            if (!string.IsNullOrEmpty(hoadon.PhuongThucThanhToan) && !string.IsNullOrEmpty(hoadon.MaPhong))
+            {
+                if (!string.IsNullOrEmpty(luuphongtamthoi))
+                {
+                    Snackbar.Add("Đã đổi phòng thành công!", Severity.Success, config => { config.VisibleStateDuration = 400; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+                    await Task.Delay(1000);
+                    hoadon.MaPhong = luuphongtamthoi;
+                    await HoaDonServices.UpdateHoaDonAsync(hoadon);
+                    navigationManager.NavigateTo("/hoadonbatbuoc");
+                }
+                else
+                {
+                    Snackbar.Add("Hết phòng để đổi rồi!", Severity.Warning, config => { config.VisibleStateDuration = 400; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+                    return;
+                }
+            }
+            else
+            {
+                Snackbar.Add("Bạn cần nhập đầy đủ thông tin!", Severity.Warning, config => { config.VisibleStateDuration = 400; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+                return;
+            }
+        }
+        else
+        {
+            Snackbar.Add("Bạn cần nhập đầy đủ thông tin!", Severity.Warning, config => { config.VisibleStateDuration = 400; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+            return;
+        }
+    }
+
+    private void quaylai()
+    {
+        navigationManager.NavigateTo("/hoadonbatbuoc", true);
+    }
+}

@@ -1,0 +1,125 @@
+﻿Bạn đã nói:
+@page "/ha"
+<h3>TTTT</h3>
+
+<div class="card">
+    <div class="top-section">
+        <div class="border"></div>
+        <div class="icons">
+            <div class="logo">
+                <label>Tổng hóa đơn</label>
+                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor" class="svg" style="height: 100%; fill: #1b233d;">
+                    <path d="M19 2H8a2 2 0 0 0-2 2v16.5a.5.5 0 0 0 .79.41L12 18.69l5.21 3.22a.5.5 0 0 0 .79-.41V4a2 2 0 0 0-2-2zM8 16v-1h8v1zm0-3v-1h8v1zm0-3V9h8v1z" />
+                </svg>
+            </div>
+            <div class="number">
+                <label>345</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+}
+<style>
+    /* From Uiverse.io by Smit-Prajapati */
+    .card {
+        width: 230px;
+        border-radius: 20px;
+        background: #1b233d;
+        padding: 5px;
+        overflow: hidden;
+        box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 20px 0px;
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        .card .top-section {
+            height: 150px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(45deg, rgb(4, 159, 187) 0%, rgb(80, 246, 255) 100%);
+            position: relative;
+        }
+
+            .card .top-section .border {
+                border-bottom-right-radius: 10px;
+                height: 30px;
+                width: 130px;
+                background: #1b233d;
+                position: relative;
+                transform: skew(-40deg);
+                box-shadow: -8px -8px 0 0 #1b233d;
+            }
+
+                .card .top-section .border::before {
+                    content: "";
+                    position: absolute;
+                    width: 15px;
+                    height: 15px;
+                    top: 0;
+                    right: -15px;
+                    background: rgba(255, 255, 255, 0);
+                    border-top-left-radius: 10px;
+                    box-shadow: -5px -5px 0 2px #1b233d;
+                }
+
+            .card .top-section::before {
+                content: "";
+                position: absolute;
+                top: 30px;
+                left: 0;
+                background: rgba(255, 255, 255, 0);
+                height: 15px;
+                width: 15px;
+                border-top-left-radius: 15px;
+                box-shadow: -5px -5px 0 2px #1b233d;
+            }
+
+            .card .top-section .icons {
+                position: absolute;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                /*align-items: center; /* Căn giữa theo chiều ngang */
+                left: 5%;
+                justify-content: space-between; /* Tạo khoảng cách giữa các phần tử */
+                padding: 4px; /* Thêm padding để căn giữa phần tử */
+            }
+
+                .card .top-section .icons .logo {
+                    display: flex;
+                    align-items: center;
+                }
+
+                    .card .top-section .icons .logo label {
+                        font-size: 14px;
+                        color: white;
+                    }
+
+                .card .top-section .icons .number {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%); /* Căn giữa số 345 */
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 40px; /* Thay đổi chiều cao nếu cần */
+                }
+
+                    .card .top-section .icons .number label {
+                        font-size: 18px;
+                        color: white;
+                        text-align: center;
+                    }
+
+</style>

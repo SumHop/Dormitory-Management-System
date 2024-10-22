@@ -1,0 +1,108 @@
+﻿@page "/Addtaikhoan/{id?}"
+
+@inject NavigationManager navigationManager
+@inject ITaiKhoanServices Service
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+@if (!string.IsNullOrEmpty(id))
+{
+    <PageTitle>CapNhatThongTin</PageTitle>
+}
+else
+{
+    <PageTitle>ThemTaiKhoan</PageTitle>
+}
+<div class="addbook_form">
+    <div class="addbook_form_body">
+        <EditForm Model="taikhoan" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <h3>
+                @(!string.IsNullOrEmpty(id) ? "Cập nhật tài khoản" : "Thêm tài khoản")
+            </h3>
+            <br />
+            <div class="form-group row">
+                <label for="TenDangNhap" class="col-form-label col-sm-2">Tên Đăng nhập:</label>
+                <div class="col-sm-10">
+                    <InputText id="TenDangNhap" class="form-control" @bind-Value="taikhoan.TenDangNhap" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="MatKhau" class="col-form-label col-sm-2">Mật khẩu:</label>
+                <div class="col-sm-10">
+                    <InputText id="MatKhau" class="form-control" @bind-Value="taikhoan.MatKhau" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="TenDayDu" class="col-form-label col-sm-2">Họ và Tên:</label>
+                <div class="col-sm-10">
+                    <InputText id="TenDayDu" class="form-control" @bind-Value="taikhoan.Email" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="VaiTro" class="col-form-label col-sm-2">Vai trò:</label>
+                <div class="col-sm-10">
+                    <InputSelect id="VaiTro" class="form-control" @bind-Value="taikhoan.VaiTro">
+                        <option value="">Chọn quyền cho tài khoản</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Employee">Employee</option>
+                        <option value="User">User</option>
+                    </InputSelect>
+                </div>
+            </div>
+            <br/>
+            <div class="d-flex justify-content-between">
+                <MudButton OnClick="HandleValidSubmit" Variant="Variant.Filled" Color="Color.Primary">Lưu</MudButton>
+                <MudSnackbarProvider />
+                <MudButton OnClick="quaylai" Variant="Variant.Filled" Color="Color.Warning">Quay lại</MudButton>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? id { get; set; }
+
+    public Taikhoan taikhoan { get; set; } = new Taikhoan();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            taikhoan = await Service.GettaikhoanByIdAsync(id);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrEmpty(taikhoan.Iduser))
+        {
+            Snackbar.Add("Thêm tài khoản thành công!", Severity.Success, config => { config.VisibleStateDuration = 300; });
+            await Task.Delay(1000);
+            taikhoan.Iduser = GenerateCode();
+            await Service.AddtaikhoanAsync(taikhoan);
+        }
+        else
+        {
+            Snackbar.Add("cập nhập tài khoản thành công!", Severity.Success, config => { config.VisibleStateDuration = 300; });
+            await Task.Delay(1000);
+            await Service.UpdatetaikhoanAsync(taikhoan);
+        }
+        navigationManager.NavigateTo("/taikhoan");
+    }
+
+    private void quaylai()
+    {
+        navigationManager.NavigateTo("/taikhoan");
+    }
+
+    private string GenerateCode()
+    {
+        return Guid.NewGuid().ToString();
+    }
+}
+

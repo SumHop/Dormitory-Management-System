@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+<MudThemeProvider></MudThemeProvider>
+<MudPopoverProvider></MudPopoverProvider>
+
+<div class="page">
+    <AuthorizeView>
+        <Authorized> 
+            <div class="sidebar">
+                <NavMenu />
+            </div>
+        </Authorized>
+    </AuthorizeView> 
+
+    <main>
+        <div class="top-row px-4">
+            <AuthorizeView>
+                <NotAuthorized>
+                    <div class="current-time" style="color: #6c757d; font-size: 0.9em; text-align: left;">@CurrentTime</div>
+                </NotAuthorized>
+
+                <Authorized>
+                    <ChuongThongBao></ChuongThongBao>
+                    &nbsp;&nbsp;&nbsp;
+                    <QLKyTucXa.Components.Pages.Home.Account @rendermode="InteractiveServer"></QLKyTucXa.Components.Pages.Home.Account>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+        <MudSnackbarProvider />
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+<style>
+    /* Thêm CSS nếu cần */
+</style> 
+
+@code {
+    private string CurrentTime { get; set; } = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+    private System.Timers.Timer timer;
+
+    protected override void OnInitialized()
+    {
+        StartTimer();
+    }
+
+    private void StartTimer()
+    {
+        timer = new System.Timers.Timer(1000); // Cập nhật mỗi giây
+        timer.Elapsed += UpdateTime;
+        timer.Start();
+    }
+
+    private void UpdateTime(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        CurrentTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+        InvokeAsync(StateHasChanged); // Cập nhật UI
+    }
+
+    public void Dispose()
+    {
+        timer?.Stop();
+        timer?.Dispose();
+    }
+}

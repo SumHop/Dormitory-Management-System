@@ -1,0 +1,194 @@
+﻿@page "/quenmatkhau"
+@inject ITaiKhoanServices tk
+@inject NavigationManager Navigation
+@inject EmailService EmailService
+@rendermode InteractiveServer
+@attribute [AllowAnonymous]
+
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .background-image {
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reset-password-form {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+            .reset-password-form h3 {
+                font-weight: 700;
+                font-size: 1.5rem;
+            }
+
+        label {
+            font-weight: 500;
+        }
+
+        .btn {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .btn-danger {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-image">
+        <div class="reset-password-form">
+            <h3>QUÊN MẬT KHẨU</h3>
+
+            @if (!isVerificationStep)
+            {
+                <EditForm Model="resetPasswordModel" OnInvalidSubmit="HandleResetPasswordRequest" FormName="FormQuenMatKhau">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label>Email:</label>
+                        <InputText @bind-Value="Email" class="form-control" placeholder="Nhập email của bạn" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(verificationMessage))
+                    {
+                        <p class="btn-danger">@verificationMessage</p>
+                    }
+                    <div>
+                        <button type="button" class="btn btn-dark" @onclick="quaylaidiem">Quay lại</button>
+                        <button type="submit" class="btn btn-primary">Gửi mã xác thực</button>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
+                <div class="form-group">
+                    <label>Nhập mã xác thực:</label>
+                    <InputText @bind-Value="enteredCode" class="form-control" />
+                    <button @onclick="VerifyCode" class="btn btn-primary">Xác thực</button>
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu mới:</label>
+                    <InputText type="password" @bind-Value="newpassword" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Xác nhận mật khẩu mới:</label>
+                    <InputText type="password" @bind-Value="confrimnewpasswprd" class="form-control" />
+                </div>
+                <button @onclick="ResetPassword" class="btn btn-primary">Đặt lại mật khẩu</button>
+                @if (!string.IsNullOrEmpty(verificationMessage))
+                {
+                    <p class="btn-danger">@verificationMessage</p>
+                }
+            }
+        </div>
+    </div>
+</body>
+
+@code {
+    string? Email;
+    string? newpassword, confrimnewpasswprd;
+    private Taikhoan? resetPasswordModel = new Taikhoan();
+    private bool isVerificationStep = false;
+    private string generatedCode;
+    private string enteredCode;
+    private string verificationMessage;
+
+    private async Task HandleResetPasswordRequest()
+    {
+        if (string.IsNullOrEmpty(Email))
+        {
+            verificationMessage = "Vui lòng nhập địa chỉ email.";
+        }
+        else
+        {
+            bool emailExists = await tk.EmailExistsAsync(Email);
+            if (!emailExists)
+            {
+                verificationMessage = "Email này không tồn tại.";
+            }
+            else
+            {
+                resetPasswordModel = await tk.GettaikhoanByEmailAsync(Email);
+                generatedCode = new Random().Next(1000, 9999).ToString();
+                string subject = "Mã xác thực đặt lại mật khẩu";
+                string body = $"Mã xác thực của bạn là: {generatedCode}";
+
+                try
+                {
+                    await EmailService.SendEmailAsync(Email, subject, body);
+                    verificationMessage = "Mã xác thực đã được gửi đến email của bạn.";
+                    isVerificationStep = true;
+                }
+                catch (Exception ex)
+                {
+                    verificationMessage = $"Lỗi khi gửi email: {ex.Message}";
+                }
+            }
+        }
+    }
+
+    private void VerifyCode()
+    {
+        if (enteredCode == generatedCode)
+        {
+            verificationMessage = "Mã xác thực đúng. Vui lòng nhập mật khẩu mới.";
+        }
+        else
+        {
+            verificationMessage = "Mã xác thực không chính xác.";
+        }
+    }
+
+    private async Task ResetPassword()
+    {
+        if (!string.IsNullOrEmpty(newpassword) && !string.IsNullOrEmpty(confrimnewpasswprd))
+        {
+            if (newpassword.Length < 8 ||
+                !newpassword.Any(char.IsLetter) ||
+                !newpassword.Any(char.IsDigit) ||
+                !newpassword.Any(ch => "!@#$%^&*()_+-=".Contains(ch)))
+            {
+                verificationMessage = "Mật khẩu phải có ít nhất 8 ký tự, bao gồm ít nhất 1 chữ cái, 1 chữ số và 1 ký tự đặc biệt.";
+                return;
+            }
+
+            if (newpassword != confrimnewpasswprd)
+            {
+                verificationMessage = "Mật khẩu mới và xác nhận mật khẩu không khớp.";
+                return;
+            }
+
+            resetPasswordModel.MatKhau = newpassword;
+            resetPasswordModel.ConfirmPassword = confrimnewpasswprd;
+
+            await tk.UpdatetaikhoanAsync(resetPasswordModel);
+            verificationMessage = "Mật khẩu đã được đặt lại thành công.";
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            verificationMessage = "Nhập mật khẩu mới";
+        }
+    }
+
+    private void quaylaidiem()
+    {
+        Navigation.NavigateTo("/login");
+    }
+}

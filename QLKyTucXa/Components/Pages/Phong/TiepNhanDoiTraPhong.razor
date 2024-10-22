@@ -1,0 +1,184 @@
+﻿@page "/quanlydoitraphong"
+@inject IYeuCauDoiTraPhongService YeuCauDoiTraPhongService
+@inject IPhongServices PhongServices
+@inject ISnackbar Snackbar
+
+<h3>Quản lý yêu cầu đổi phòng</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Mã yêu cầu</th>
+            <th>Mã sinh viên</th>
+            <th>Phòng hiện tại</th>
+            <th>Phòng mới</th>
+            <th>Lý do</th>
+            <th>Trạng thái</th>
+            <th>Ngày yêu cầu</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var request in roomChangeRequests)
+        {
+            <tr>
+                <td>@request.MaYeuCau</td>
+                <td>@request.MaSinhVien</td>
+                <td>@request.PhongHienTai?.TenPhong</td>
+                <td>@request.PhongMoi?.TenPhong</td>
+                <td>@request.LyDoDoiPhong</td>
+                <td>@request.TrangThai</td>
+                <td>@request.NgayYeuCau.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <button class="btn btn-success" @onclick="() => ApproveRequest(request)">Duyệt</button>
+                    <button class="btn btn-danger" @onclick="() => RejectRequest(request.MaYeuCau)">Từ chối</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Quản lý yêu cầu trả phòng</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Mã yêu cầu</th>
+            <th>Mã sinh viên</th>
+            <th>Phòng</th>
+            <th>Lý do</th>
+            <th>Trạng thái</th>
+            <th>Ngày yêu cầu</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var request in roomReturnRequests)
+        {
+            <tr>
+                <td>@request.MaYeuCau</td>
+                <td>@request.MaSinhVien</td>
+                <td>@request.PhongHienTai?.TenPhong</td>
+                <td>@request.LyDoTraPhong</td>
+                <td>@request.TrangThai</td>
+                <td>@request.NgayYeuCau.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <button class="btn btn-success" @onclick="() => ApproveReturnRequest(request)">Duyệt</button>
+                    <button class="btn btn-danger" @onclick="() => RejectRequest(request.MaYeuCau)">Từ chối</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Yeucaudoitraphong> roomChangeRequests = new List<Yeucaudoitraphong>();
+    private List<Yeucaudoitraphong> roomReturnRequests = new List<Yeucaudoitraphong>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        roomChangeRequests = await YeuCauDoiTraPhongService.GetRoomChangeRequestsAsync() ?? new List<Yeucaudoitraphong>();
+        roomReturnRequests = await YeuCauDoiTraPhongService.GetRoomReturnRequestsAsync() ?? new List<Yeucaudoitraphong>();
+    }
+
+    private async Task ApproveRequest(Yeucaudoitraphong request)
+    {
+        if (request == null) return;
+
+        try
+        {
+            var currentRoom = await PhongServices.GetPhongByIdAsync(request.MaPhongHienTai);
+            var newRoom = await PhongServices.GetPhongByIdAsync(request.MaPhongMoi);
+
+            if (currentRoom == null || newRoom == null)
+            {
+                Snackbar.Add("Phòng hiện tại hoặc phòng mới không tồn tại!", Severity.Error);
+                return;
+            }
+
+            // Cập nhật trạng thái yêu cầu
+            request.TrangThai = "Đã duyệt";
+
+            // Giảm số người ở của phòng hiện tại
+            currentRoom.SoNguoiO -= 1;
+
+            // Tăng số người ở của phòng mới
+            newRoom.SoNguoiO += 1;
+
+            // Cập nhật thông tin phòng
+            await PhongServices.UpdatePhongAsync(currentRoom);
+            await PhongServices.UpdatePhongAsync(newRoom);
+
+            // Lưu cập nhật yêu cầu
+            var isSuccess = await YeuCauDoiTraPhongService.UpdateRequestAsync(request);
+            if (isSuccess)
+            {
+                roomChangeRequests.Remove(request); // Xóa khỏi danh sách
+                Snackbar.Add("Yêu cầu đã được phê duyệt.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Lỗi khi cập nhật yêu cầu!", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Đã xảy ra lỗi: " + ex.Message, Severity.Error);
+        }
+    }
+
+
+    private async Task ApproveReturnRequest(Yeucaudoitraphong request)
+    {
+        if (request == null) return;
+
+        try
+        {
+            request.TrangThai = "Đã duyệt";
+            Snackbar.Add("Yêu cầu trả phòng đã được phê duyệt!", Severity.Success);
+
+            var currentRoom = await PhongServices.GetPhongByIdAsync(request.MaPhongHienTai);
+            if (currentRoom != null)
+            {
+                currentRoom.SoNguoiO -= 1; // Giảm số người ở
+                await PhongServices.UpdatePhongAsync(currentRoom);
+            }
+
+            var isSuccess = await YeuCauDoiTraPhongService.UpdateRequestAsync(request);
+            if (isSuccess)
+            {
+                roomReturnRequests.Remove(request); // Xóa khỏi danh sách
+                Snackbar.Add("Yêu cầu đã được xóa khỏi danh sách.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Lỗi khi cập nhật yêu cầu!", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Đã xảy ra lỗi: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task RejectRequest(string maYeuCau)
+    {
+        var request = roomChangeRequests.FirstOrDefault(r => r.MaYeuCau == maYeuCau) ??
+                      roomReturnRequests.FirstOrDefault(r => r.MaYeuCau == maYeuCau);
+
+        if (request != null)
+        {
+            request.TrangThai = "Đã từ chối";
+            await YeuCauDoiTraPhongService.UpdateRequestAsync(request);
+
+            if (roomChangeRequests.Remove(request) || roomReturnRequests.Remove(request))
+            {
+                Snackbar.Add("Yêu cầu đã bị từ chối.", Severity.Warning);
+            }
+        }
+        else
+        {
+            Snackbar.Add("Yêu cầu không tìm thấy!", Severity.Error);
+        }
+    }
+}

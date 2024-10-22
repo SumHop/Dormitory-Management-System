@@ -1,0 +1,86 @@
+﻿@page "/lichsuthanhtoan"
+@inject IHoaDonServices HoaDonServices
+@inject IPhongServices PhongServices
+@inject IHopDongServices HopDongServices
+@inject INhanVienServices NhanVienServices
+@inject ISinhVienServices SinhVienServices
+@inject AuthenticationStateProvider AuthenticationStateProvider
+<PageTitle>LỊCH SỬ THANH TOÁN</PageTitle>
+<h3>LỊCH SỬ THANH TOÁN</h3>
+<br/>
+@if (hoadonHienThi.Count == 0)
+{
+     <div style="text-align: center;">
+        <h6>Không có dữ liệu</h6>
+    </div>
+}
+else
+{
+    <MudTable Items="@hoadonHienThi" Hover="true" Breakpoint="Breakpoint.Sm" Style="background-color:#F1F8E9;">
+        <HeaderContent>
+            <MudTh>Ngày lập HD</MudTh>
+            <MudTh>Phương thức thanh toán</MudTh>
+            <MudTh>Trạng thái</MudTh>
+            <MudTh>Tên phòng</MudTh>
+            <MudTh>Tên nhân viên</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Ngày Lập HD">@context.NgayLapHd?.ToString("dd/MM/yyyy")</MudTd>
+            <MudTd DataLabel="Phương Thức Thanh Toán">@context.PhuongThucThanhToan</MudTd>
+            <MudTd DataLabel="Trạng Thái">@context.TrangThai</MudTd>
+            <MudTd DataLabel="Mã Phòng">
+                @foreach (var i in cacphong)
+                {
+                    if (i.MaPhong == context.MaPhong)
+                    {
+                        @i.TenPhong
+                    }
+                }
+            </MudTd>
+            <MudTd DataLabel="ID Nhân Viên">
+                @foreach (var h in cacnhanvien)
+                {
+                    if (h.IdnhanVien == context.IdnhanVien)
+                    {
+                        @h.HoTen
+                    }
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<Hoadon> hoadon = new List<Hoadon>();
+    private List<Phong> cacphong = new List<Phong>();
+    private List<Nhanvien> cacnhanvien = new List<Nhanvien>();
+    private List<Sinhvien> cacsinhvien = new List<Sinhvien>();
+    private List<Hopdong> cachopdong = new List<Hopdong>();
+    private ClaimsPrincipal? user;
+    private List<Hoadon> hoadonHienThi = new List<Hoadon>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        hoadon = await HoaDonServices.GetHoaDonByDaThanhToanAsync();
+        cacsinhvien = await SinhVienServices.laydssinhvien();
+        cacphong = await PhongServices.GetPhongAsync();
+        cacnhanvien = await NhanVienServices.GetPhongAsync();
+        cachopdong = await HopDongServices.GetPhongAsync();
+
+        hoadonHienThi = layhoadontheophong(user.FindFirst(ClaimTypes.NameIdentifier)?.Value.ToString());
+    }
+
+    private List<Hoadon> layhoadontheophong(string id)
+    {
+        var query = from hd in hoadon
+                    join p in cacphong on hd.MaPhong equals p.MaPhong
+                    join hdg in cachopdong on p.MaPhong equals hdg.MaPhong
+                    join sv in cacsinhvien on hdg.Mssv equals sv.Mssv
+                    where sv.Iduser == id
+                    select hd;
+
+        return query.ToList();
+    }
+}

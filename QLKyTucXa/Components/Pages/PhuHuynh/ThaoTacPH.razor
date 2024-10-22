@@ -1,0 +1,117 @@
+﻿@page "/Addphuhuynh/{id?}"
+
+@inject NavigationManager navigationManager
+@inject IPhuHuynhServices Service
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@if (!string.IsNullOrEmpty(id))
+{
+    <PageTitle>CapNhatThongTin</PageTitle>
+}
+else
+{
+    <PageTitle>ThemPhuHuynh</PageTitle>
+}
+<div class="addbook_form">
+    <div class="addbook_form_body">
+        <EditForm FormName="AddPhuHuynhForm" Model="phuhuynh" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <h3>
+                @(!string.IsNullOrEmpty(id) ? "Cập Nhật phụ huynh" : "Thêm phụ huynh")
+            </h3>
+            <br />
+            <div class="form-group row">
+                <label for="TenSinhvien" class="col-form-label col-sm-2">Họ và tên:</label>
+                <div class="col-sm-10">
+                    <InputText id="TenSinhvien" class="form-control" @bind-Value="phuhuynh.HoTen" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="NgaySinh" class="col-form-label col-sm-2">Ngày sinh:</label>
+                <div class="col-sm-10">
+                    <InputDate id="NgaySinh" class="form-control" @bind-Value="phuhuynh.NgaySinh" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="NgheNghiep" class="col-form-label col-sm-2">Nghề nghiệp:</label>
+                <div class="col-sm-10">
+                    <InputText id="NgheNghiep" class="form-control" @bind-Value="phuhuynh.NgheNghiep" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="SDT" class="col-form-label col-sm-2">SDT:</label>
+                <div class="col-sm-10">
+                    <InputText id="SDT" class="form-control" @bind-Value="phuhuynh.Sdt" />
+                </div>
+            </div>
+            <br />
+            <div class="form-group row">
+                <label for="QuanHe" class="col-form-label col-sm-2">Quan hệ:</label>
+                <div class="col-sm-10">
+                    <InputText id="QuanHe" class="form-control" @bind-Value="phuhuynh.QuanHe" />
+                </div>
+            </div>
+            <br />
+            <div class="d-flex justify-content-between">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleValidSubmit">Lưu</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="quaylai">Quay lại</MudButton>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? id { get; set; }
+    public string? studentId { get; set; }
+
+    public Phuhuynh phuhuynh { get; set; } = new Phuhuynh();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Parse query parameter
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        studentId = query.TryGetValue("studentId", out var idValue) ? idValue.ToString() : null;
+
+        if (!string.IsNullOrEmpty(id))
+        {
+            phuhuynh = await Service.GetPhuhuynhByIdAsync(id);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrEmpty(phuhuynh.IdphuHuynh))
+        {
+            Snackbar.Add("Thêm phụ huynh thành công!", Severity.Success, config => { config.VisibleStateDuration = 500; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+            await Task.Delay(1000);
+            phuhuynh.IdphuHuynh = GenerateCode();
+            phuhuynh.Mssv = studentId;
+            await Service.AddphuHuynhAsync(phuhuynh);
+        }
+        else
+        {
+            Snackbar.Add("Cập nhật thành công!", Severity.Success, config => { config.VisibleStateDuration = 500; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+            await Task.Delay(1000);
+            await Service.UpdatePhuHuynhAsync(phuhuynh);
+        }
+        navigationManager.NavigateTo("/sinhvien", true);
+    }
+
+    private void quaylai()
+    {
+        navigationManager.NavigateTo("/sinhvien", true);
+    }
+
+    private string GenerateCode()
+    {
+        return Guid.NewGuid().ToString();
+    }
+}
+

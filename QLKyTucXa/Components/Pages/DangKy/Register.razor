@@ -1,0 +1,135 @@
+﻿@page "/register"
+@using System.Text.RegularExpressions
+@inject EmailService EmailService
+@inject ITaiKhoanServices tk
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@attribute [AllowAnonymous]
+
+@if (!isVerificationStep)
+{
+    <div class="row">
+        <div class="col-lg-4 offset-lg-4 pt-4 pb-4 border">
+            <EditForm Model="registerModel" OnValidSubmit="HandleRegistration" OnInvalidSubmit="HandleInvalidSubmit" FormName="Dk">
+                <DataAnnotationsValidator />
+                <div class="mb-3 text-center flex-column">
+                    <h3>ĐĂNG KÝ TÀI KHOẢN</h3>
+                </div>
+                <div class="mb-3">
+                    <label>Tên đăng nhập:</label>
+                    <InputText @bind-Value="registerModel.TenDangNhap" class="form-control" placeholder="Tên đăng nhập" />
+                    <ValidationMessage For="() => registerModel.TenDangNhap" />
+                </div>
+                <div class="mb-3">
+                    <label>Email:</label>
+                    <InputText @bind-Value="registerModel.Email" class="form-control" placeholder="Email"  />
+                    <ValidationMessage For="() => registerModel.Email" />
+                </div>
+                <div class="mb-3">
+                    <label>Mật khẩu:</label>
+                    <InputText type="password" @bind-Value="registerModel.MatKhau" class="form-control" placeholder="Mật khẩu" />
+                    <ValidationMessage For="() => registerModel.MatKhau" />
+                </div>
+                <div class="mb-3">
+                    <label>Xác nhận mật khẩu:</label>
+                    <InputText type="password" @bind-Value="registerModel.ConfirmPassword" class="form-control" placeholder="Xác nhận mật khẩu" />
+                    <ValidationMessage For="() => registerModel.ConfirmPassword" />
+                </div>
+                <div>
+                    
+                    <button type="button" class="btn btn-dark" @onclick="quaylaidiem">Quay lại</button>
+                    <button type="submit" class="btn btn-primary">Đăng ký</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+else
+{
+    <div class="form-group">
+        <label>Nhập mã xác thực:</label>
+        <InputText @bind-Value="enteredCode" class="form-control" />
+        <button @onclick="VerifyCode" class="btn btn-primary">Xác thực</button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(verificationMessage))
+    {
+        <p class="message">@verificationMessage</p>
+    }
+}
+
+@code {
+    private Taikhoan registerModel = new Taikhoan();
+    private bool isVerificationStep = false;
+    private string generatedCode;
+    private string enteredCode;
+    private string verificationMessage;
+    private bool hasEmailError;
+
+    private async Task HandleRegistration()
+    {
+        if (hasEmailError == false)
+        {
+            generatedCode = new Random().Next(1000, 9999).ToString();
+            string subject = "Mã xác thực email";
+            string body = $"Mã xác thực của bạn là: {generatedCode}";
+
+            try
+            {
+                await EmailService.SendEmailAsync(registerModel.Email, subject, body);
+                verificationMessage = "Mã xác thực đã được gửi đến email của bạn.";
+                isVerificationStep = true;
+            }
+            catch (Exception ex)
+            {
+                verificationMessage = $"Lỗi khi gửi email: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task HandleInvalidSubmit(EditContext editContext)
+    {
+        var validationMessageStore = new ValidationMessageStore(editContext);
+        //kiểm tra email trong cơ sở dữ liệu
+        bool emailExists = await tk.EmailExistsAsync(registerModel.Email);
+        validationMessageStore.Clear(() => registerModel.Email);
+
+        if (emailExists && !hasEmailError)
+        {
+            verificationMessage = "Email đã được sử dụng.";
+            validationMessageStore.Add(() => registerModel.Email, verificationMessage);
+            hasEmailError = true;
+        }
+        else
+        {
+            hasEmailError = false;
+        }
+    }
+
+    private void VerifyCode()
+    {
+        if (enteredCode == generatedCode)
+        {
+            verificationMessage = "Xác thực email thành công! Bạn đã đăng ký thành công.";
+            registerModel.Iduser = GenerateCode();
+            registerModel.EmailDaXacMinh = true;
+            registerModel.VaiTro = "User";
+            tk.AddtaikhoanAsync(registerModel);
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            verificationMessage = "Mã xác thực không chính xác.";
+        }
+    }
+
+    private string GenerateCode()
+    {
+        return Guid.NewGuid().ToString();
+    }
+
+    private void quaylaidiem()
+    {
+        Navigation.NavigateTo("/login");
+    }
+}

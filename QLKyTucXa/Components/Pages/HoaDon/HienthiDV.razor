@@ -1,0 +1,314 @@
+﻿@inject ISnackbar Snackbar
+<div class="confirm-dialog-container" @onclick="CloseDialogIfClickedOutside">
+    <div class="confirm-dialog" @onclick:stopPropagation>
+        <div class="table-container">
+                <table class="table mb-1 mt-1">
+                    <thead>
+                        <tr>
+                            <th>Tên Dịch vụ</th>
+                            <th>Đơn giá</th>    
+                            @if (kiemtraloaihoadon)
+                            {
+                                <th>Số lượng</th>
+                            }
+                            else
+                            {
+                                <th>Chỉ số đầu</th>
+                                <th>Chỉ số cuối</th>
+                            }
+                            <th>Thành tiền</th>
+                            <th>Đơn vị tính</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var forecast in dichvu)
+                        {
+                            foreach (var dv in DvtheoMaHd)
+                            {
+                                if (forecast.MaDv == dv.MaDv)
+                                {
+                                  <tr>
+                                        <td>@forecast.TenDichVuBatBuoc</td>
+                                        <td>@forecast.DonGia</td>
+                                        @if (kiemtraloaihoadon)
+                                        {
+                                            <td>
+                                                @if (editMode && editingMaDv == forecast.MaDv)
+                                                {
+                                                <input type="number" @bind="currentChiTietHoaDon.SoLuong" class="form-control" style="width: 80px;" min="1" max="10000" />
+                                                }
+                                                else
+                                                {
+                                                    @(dv.SoLuong.HasValue ? dv.SoLuong.Value.ToString() : "-")
+                                                }   
+                                            </td>
+                                        }
+                                        else
+                                        {
+                                            <td>
+                                                @if (editMode && editingMaDv == forecast.MaDv)
+                                                {
+                                                <input type="number" @bind="currentChiTietHoaDon.ChiSoDau" class="form-control" style="width: 100px;" min="1" max="100000" />
+                                                }
+                                                else
+                                                {
+                                                    @(dv.ChiSoDau.HasValue ? dv.ChiSoDau.Value.ToString() : "-")
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (editMode && editingMaDv == forecast.MaDv)
+                                                {
+                                                <input type="number" @bind="currentChiTietHoaDon.ChiSoCuoi" class="form-control" style="width: 100px;" min="1" max="100000" />
+                                                }
+                                                else
+                                                {
+                                                    @(dv.ChiSoCuoi.HasValue ? dv.ChiSoCuoi.Value.ToString() : "-")
+                                                }
+                                            </td>
+                                        }
+                                        <td>
+                                            @if (forecast.MaDv == dv.MaDv)
+                                            {
+                                                if (kiemtraloaihoadon)
+                                                {
+                                                    @((dv.SoLuong * forecast.DonGia ?? 0).ToString("N0"))
+                                                }
+                                                else
+                                                {
+                                                    if (forecast.MaDv != "dd3791cb-3070-4b3a-b3f1-64c1fbb5916a")
+                                                    {
+                                                        @(((dv.ChiSoCuoi - dv.ChiSoDau) * forecast.DonGia ?? 0).ToString("N0"))
+                                                    }
+                                                    else
+                                                    {
+                                                        @((forecast.DonGia * caulenhLINQ() ?? 0).ToString("N0"))
+                                                    }   
+                                                }
+                                            }
+                                        </td>
+                                        <td>@forecast.Dvt</td>
+                                    @if (forecast.MaDv != "dd3791cb-3070-4b3a-b3f1-64c1fbb5916a")
+                                      {
+                                        <td>
+                                            @if (editMode && editingMaDv == forecast.MaDv)
+                                            {
+                                                <MudButton Variant="Variant.Filled" OnClick="SaveEdit" Color="Color.Info" Size="Size.Small">Lưu</MudButton>
+                                                <MudButton Variant="Variant.Filled" OnClick="CancelEdit" Color="Color.Default" Size="Size.Small">Hủy</MudButton>
+                                            }
+                                            else
+                                            {
+                                                <MudButton Variant="Variant.Filled" OnClick="@(() => EditDV(forecast.MaDv))" Color="Color.Default" Size="Size.Small">Sửa</MudButton>
+                                                <MudButton Variant="Variant.Filled" OnClick="@(() => XoaDV(dv))" Color="Color.Error" Size="Size.Small">Xóa</MudButton>
+                                            }
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td>Mặc định</td>
+                                    }
+                                  </tr>
+                                if (!editMode)
+                                {
+                                    if (forecast.TenDichVuBatBuoc == "Phí thuê phòng")
+                                    {
+                                        tongTien += forecast.DonGia * (caulenhLINQ() ?? 1);
+                                    }
+                                    else
+                                    {
+                                        if (dv.SoLuong != null)
+                                            tongTien += forecast.DonGia * dv.SoLuong;
+                                        else if (dv.ChiSoCuoi != null && dv.ChiSoDau != null)
+                                            tongTien += forecast.DonGia * (dv.ChiSoCuoi - dv.ChiSoDau);
+                                        else
+                                            Console.WriteLine($"Lỗi: Thiếu chỉ số đầu hoặc chỉ số cuối cho dịch vụ {forecast.TenDichVuBatBuoc}");
+                                    }
+                                }
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+        </div>
+        <div>
+            <label>Tổng tiền:</label> @(tongTien.HasValue ? tongTien.Value.ToString("N0") : "")
+        </div>
+    </div>
+</div>
+<MudSnackbarProvider />
+@code {
+    [Parameter] public bool kiemtraloaihoadon { get; set; }
+    [Parameter] public bool Chophepchinh { get; set; }
+    [Parameter] public List<Hoadon> haodon { get; set; }
+    [Parameter] public List<Phong> cacphong { get; set; }
+    [Parameter] public List<Dichvu> dichvu { get; set; }
+    [Parameter] public List<Chitiethoadon> DvtheoMaHd { get; set; }
+    [Parameter] public EventCallback<Chitiethoadon> xoaDV { get; set; }
+    [Parameter] public EventCallback<Chitiethoadon> SaveEditCallback { get; set; }
+    //[Parameter] public EventCallback<Chitiethoadon> truyencthdbackup { get; set; }
+    private Chitiethoadon? currentChiTietHoaDon;
+    private Chitiethoadon? backupDv;
+
+    private double? tongTien = 0;
+    private int? caulenhLINQ()
+    {
+        var soNguoiOTheoMaHd = (from hd in haodon
+                                join p in cacphong on hd.MaPhong equals p.MaPhong
+                                join cthd in DvtheoMaHd on hd.MaHd equals cthd.MaHd
+                                where hd.MaHd == cthd.MaHd
+                                select p.SoNguoiO).FirstOrDefault();
+        return soNguoiOTheoMaHd;
+    }
+
+    private bool editMode = false;
+    private string? editingMaDv;
+
+    private void EditDV(string maDv)
+    {
+        editMode = true;
+        editingMaDv = maDv;
+        currentChiTietHoaDon = DvtheoMaHd.FirstOrDefault(dv => dv.MaDv == maDv);
+        //truyencthdbackup.InvokeAsync(currentChiTietHoaDon);
+        backupDv = new Chitiethoadon
+                {
+                SoLuong = currentChiTietHoaDon?.SoLuong,
+                ChiSoDau = currentChiTietHoaDon?.ChiSoDau,
+                ChiSoCuoi = currentChiTietHoaDon?.ChiSoCuoi,
+                };
+        //truyencthdbackup.InvokeAsync(backupDv);
+
+    }
+
+    private void CancelEdit()
+    {
+        if (backupDv != null && currentChiTietHoaDon != null)
+        {
+            currentChiTietHoaDon.SoLuong = backupDv.SoLuong;
+            currentChiTietHoaDon.ChiSoDau = backupDv.ChiSoDau;
+            currentChiTietHoaDon.ChiSoCuoi = backupDv.ChiSoCuoi;
+        }
+        editMode = false;
+        editingMaDv = null;
+        backupDv = null;
+        StateHasChanged();
+    }
+
+    private void SaveEdit()
+    {
+        if (SaveEditCallback.HasDelegate)
+        {
+            if (kiemtraloaihoadon)
+            {
+                if (currentChiTietHoaDon != null)
+                {
+                    if (currentChiTietHoaDon.SoLuong.HasValue && currentChiTietHoaDon.SoLuong > 0 && currentChiTietHoaDon.SoLuong < 10000)
+                    {
+                        SaveEditCallback.InvokeAsync(currentChiTietHoaDon);
+                    }
+                    else
+                    {
+                        Snackbar.Add("Nhập số bị sai!", Severity.Warning, config => { config.VisibleStateDuration = 400; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+                        CancelEdit();
+                        StateHasChanged();
+                    }
+                }
+            }
+            else
+            {
+                if (currentChiTietHoaDon != null)
+                {
+                    if (currentChiTietHoaDon.ChiSoDau.HasValue && currentChiTietHoaDon.ChiSoCuoi.HasValue && currentChiTietHoaDon.ChiSoDau < currentChiTietHoaDon.ChiSoCuoi && currentChiTietHoaDon.ChiSoDau > 0 && currentChiTietHoaDon.ChiSoDau < 100000 && currentChiTietHoaDon.ChiSoCuoi > 0 && currentChiTietHoaDon.ChiSoCuoi < 100000)
+                    {
+                        SaveEditCallback.InvokeAsync(currentChiTietHoaDon);
+                    }
+                    else
+                    {
+                        Snackbar.Add("Nhập số bị sai!", Severity.Warning, config => { config.VisibleStateDuration = 400; config.HideTransitionDuration = 100; config.ShowTransitionDuration = 500; });
+                        CancelEdit();
+                        StateHasChanged();
+                    }
+                }
+            }
+        }
+        editMode = false;
+        editingMaDv = null;
+        tongTien = 0;
+    }
+
+    private bool IsValids(Chitiethoadon chiTiet)
+    {
+        bool isValid = true;
+
+        if (kiemtraloaihoadon)
+        {
+            if (!IsNumber(chiTiet.SoLuong?.ToString()) || chiTiet.SoLuong == null || chiTiet.SoLuong <= 0)
+        {
+                isValid = false;
+            }
+        }
+        else
+        {
+            if (!IsNumber(chiTiet.ChiSoDau?.ToString()) && !IsNumber(chiTiet.ChiSoCuoi?.ToString()) && chiTiet.ChiSoDau == null && chiTiet.ChiSoCuoi == null && chiTiet.ChiSoCuoi <= chiTiet.ChiSoDau && chiTiet.ChiSoDau <= 0 && chiTiet.ChiSoCuoi <= 0 && chiTiet.ChiSoDau >= 100000 && chiTiet.ChiSoCuoi >= 100000)
+            {
+                isValid = false;
+            }
+        }
+
+        return isValid;
+    }
+
+    private bool IsNumber(string value)
+    {
+        return int.TryParse(value, out _);
+    }
+
+    private void XoaDV(Chitiethoadon chiTiet)
+    {
+        if (xoaDV.HasDelegate)
+        {
+            xoaDV.InvokeAsync(chiTiet);
+        }
+    }
+
+    private void CloseDialogIfClickedOutside() => Chophepchinh = false;
+}
+
+<style>
+    .table-container {
+        max-height: 300px; /* Hoặc bất kỳ chiều cao nào bạn muốn */
+        overflow-y: auto; /* Kích hoạt thanh cuộn dọc nếu nội dung vượt quá chiều cao */
+    }
+    .confirm-dialog-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Màn hình đen mờ phía sau */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999; /* Đảm bảo modal nằm trên các thành phần khác */
+    }
+
+    .confirm-dialog {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        width: 800px;
+        max-width: 90%;
+        text-align: center;
+    }
+
+        .confirm-dialog h3 {
+            margin-bottom: 20px;
+        }
+
+    .d-flex-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+</style>

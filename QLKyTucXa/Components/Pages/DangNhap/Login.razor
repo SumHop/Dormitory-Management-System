@@ -1,0 +1,121 @@
+﻿@page "/login"
+@inject DataQlktxContext dbcontext
+@inject NavigationManager navigationManager
+@inject LuuBien luu
+@attribute [AllowAnonymous]
+
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0; /* Xóa margin mặc định */
+            font-family: 'Roboto', sans-serif; /* Thay đổi phông chữ */
+        }
+
+        .background-image {
+/*             background-image: url('/image/fotor-ai-20241002164923.jpg'); /* Đường dẫn đến hình ảnh */
+ */            background-size: cover; /* Làm đầy toàn bộ khu vực */
+            background-position: center; /* Căn giữa hình ảnh */
+            height: 100vh; /* Chiều cao toàn bộ viewport */
+            display: flex; /* Sử dụng Flexbox */
+            align-items: center; /* Căn giữa theo chiều dọc */
+            justify-content: center; /* Căn giữa theo chiều ngang */
+        }
+
+        .login-form {
+            background-color: rgba(255, 255, 255, 0.9); /* Nền trắng với độ trong suốt */
+            border-radius: 8px; /* Bo tròn góc */
+            padding: 20px; /* Padding cho form */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Đổ bóng */
+            width: 100%; /* Đặt chiều rộng 100% */
+            max-width: 400px; /* Chiều rộng tối đa của form */
+            max-height: 90vh; /* Chiều cao tối đa cho ô */
+            overflow: auto; /* Cuộn nếu nội dung vượt quá chiều cao */
+        }
+
+            .login-form h3 {
+                font-weight: 700; /* Đặt trọng số cho tiêu đề */
+                font-size: 1.5rem; /* Kích thước phông chữ cho tiêu đề */
+            }
+
+        label {
+            font-weight: 500; /* Đặt trọng số cho nhãn */
+        }
+
+        .btn {
+            font-family: 'Roboto', sans-serif; /* Đảm bảo phông chữ cho nút */
+        }
+    </style>
+</head>
+<body>
+    <div class="background-image">
+        <div class="login-form">
+            <EditForm Model="@Model" OnValidSubmit="Authenticate" FormName="LoginForm">
+                <DataAnnotationsValidator />
+                <div class="mb-3 text-center">
+                    <h3>ĐĂNG NHẬP TÀI KHOẢN</h3>
+                </div>
+                <div class="mb-3">
+                    <label>Tên đăng nhập</label>
+                    <InputText @bind-Value="Model.Username" class="form-control" placeholder="Tên đăng nhập" />
+                    <ValidationMessage For="() => Model.Username" />
+                </div>
+                <div class="mb-3">
+                    <label>Mật khẩu</label>
+                    <InputText @bind-Value="Model.Password" class="form-control" placeholder="Mật khẩu" type="password" />
+                    <ValidationMessage For="() => Model.Password" />
+                </div>
+                <div class="mb-3 text-center">
+                    <span class="text-danger">@errorMessage</span>
+                </div>
+                <div class="mb-3 d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Đăng nhập</button>
+                </div>
+                <div>
+                    <label>Chưa có tài khoản?</label>
+                    <a href="/register" style="color: blue; text-decoration: none;">Đăng ký</a>
+                    <a href="/quenmatkhau" style="color: brown; margin-left: 20px;">Quên mật khẩu</a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</body>
+
+
+@code {
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromForm]
+    public LoginViewContro Model { get; set; } = new();
+
+    private string? errorMessage;
+    private async Task Authenticate()
+    {
+        var userAccount = dbcontext.Taikhoans.Where(x => x.TenDangNhap == Model.Username).FirstOrDefault();
+        if (userAccount is null || userAccount.MatKhau != Model.Password)
+        {
+            errorMessage = "Sai tên đăng nhập hoặc mật khẩu";
+            return;
+        }
+
+        luu.IDUser = userAccount.Iduser;
+        luu.EmailDN = userAccount.Email;
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, Model.Username),
+            new Claim(ClaimTypes.Role, userAccount.VaiTro),
+             new Claim(ClaimTypes.NameIdentifier, userAccount.Iduser.ToString()),
+             new Claim(ClaimTypes.Email, userAccount.Email.ToString())
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        if (HttpContext != null)
+        {
+            await HttpContext.SignInAsync(principal);
+        }
+        navigationManager.NavigateTo("/");
+    }
+}

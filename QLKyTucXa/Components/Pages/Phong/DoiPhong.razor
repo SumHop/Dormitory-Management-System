@@ -1,0 +1,161 @@
+﻿@page "/room-change"
+@inject YeuCauDoiTraPhongService RequestService
+
+@inject SnackbarService Snackbar // Make sure you have Snackbar injected
+
+<h3>YÊU CẦU ĐỔI PHÒNG</h3>
+
+@if (isChangeRoomModalOpen)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">YÊU CẦU ĐỔI PHÒNG</h5>
+                    <button type="button" class="btn-close" @onclick="ToggleChangeRoomModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                        <label for="currentRoom">Phòng hiện tại:</label>
+                        <input id="currentRoom" value="@phong.TenPhong" readonly />
+                    </div>
+                    <div>
+                        <label for="newRoom">Phòng mới:</label>
+                        <select id="newRoom" @bind="newRoomId">
+                            <option value="">Chọn phòng mới</option>
+                            @foreach (var lap in availableRooms)
+                            {
+                                <option value="@lap.MaPhong">@lap.TenPhong</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label for="reason">Lý do:</label>
+                        <textarea id="reason" @bind="reason" placeholder="Nhập lý do đổi phòng"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="ToggleChangeRoomModal">Hủy</button>
+                    <button class="btn btn-primary" @onclick="OpenConfirmationModal">Gửi yêu cầu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (isConfirmationModalOpen)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">XÁC NHẬN ĐỔI PHÒNG</h5>
+                    <button type="button" class="btn-close" @onclick="CloseConfirmationModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Bạn có chắc chắn muốn đổi sang phòng <strong>@availableRooms.FirstOrDefault(x => x.MaPhong == newRoomId)?.TenPhong</strong> không?</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseConfirmationModal">Hủy</button>
+                    <button class="btn btn-primary" @onclick="SubmitChangeRequest">Xác Nhận</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private ClaimsPrincipal? user;
+    private List<Hopdong> cachopdong = new List<Hopdong>();
+    private List<Sinhvien> cacsinhvien = new List<Sinhvien?>();
+    private List<Nhanvien> cacnhanvien = new List<Nhanvien?>();
+    private List<Phong> cacphong = new List<Phong>();
+    private List<Hoadon> cachoadon = new List<Hoadon>();
+    private List<Chitiethoadon> cacCTHD = new List<Chitiethoadon>();
+    private List<Chitiethoadon> dungdehienthiCHTD = new List<Chitiethoadon>();
+    private List<Dichvu> cacdichvu = new List<Dichvu>();
+    private Sinhvien? sinhvien = new Sinhvien();
+    private Hopdong? hopdong = new Hopdong();
+    private Hoadon hoadon = new Hoadon();
+    private Phong? phong = new Phong();
+    private string? bien, idToDelete, Mahd;
+    bool userExists;
+    double tongtien = 0;
+    private bool xacnhanxoa = false;
+    private bool isChangeRoomModalOpen = false;
+    private List<Phong> availableRooms => GetAvailableRoomsForMonth();
+    private string currentRoomId;
+    private string newRoomId;
+    private string reason;
+    private bool isConfirmationModalOpen = false;
+    private string sinhVienId => sinhvien?.Mssv;
+    private List<Phong> GetAvailableRoomsForMonth()
+    {
+        var currentMonth = DateTime.Now.Month;
+        var currentYear = DateTime.Now.Year;
+
+        var roomsInHoadonThisMonth = cachoadon
+            .Where(hd => hd?.NgayLapHd?.Month == currentMonth && hd?.NgayLapHd?.Year == currentYear)
+            .Select(hd => hd?.MaPhong).ToList();
+
+        var roomsWithStudents = cachopdong
+            .Select(hdo => hdo.MaPhong)
+            .Distinct()
+            .ToList();
+
+        return cacphong.Where(p => p != null && !roomsInHoadonThisMonth.Contains(p.MaPhong) && roomsWithStudents.Contains(p.MaPhong)).ToList();
+    }
+
+    private void ToggleChangeRoomModal()
+    {
+        isChangeRoomModalOpen = !isChangeRoomModalOpen;
+    }
+
+    private void OpenConfirmationModal()
+    {
+        if (string.IsNullOrEmpty(newRoomId) || string.IsNullOrEmpty(reason))
+        {
+            Snackbar.Add("Bạn cần chọn phòng mới và nhập lý do!", Severity.Warning);
+            return;
+        }
+        isConfirmationModalOpen = true;
+    }
+
+    private void CloseConfirmationModal()
+    {
+        isConfirmationModalOpen = false;
+    }
+
+    private async Task SubmitChangeRequest()
+    {
+        if (!string.IsNullOrEmpty(newRoomId) && !string.IsNullOrEmpty(reason))
+        {
+            var changeRoomRequest = new Yeucaudoitraphong
+                {
+                    MaSinhVien = sinhVienId,
+                    MaPhongHienTai = currentRoomId,
+                    MaPhongMoi = newRoomId,
+                    LyDoDoiPhong = reason,
+                    NgayYeuCau = DateTime.Now,
+                    TrangThai = "Đang chờ duyệt"
+                };
+
+            var isSuccess = await RequestService.SubmitRequestAsync(changeRoomRequest);
+
+            if (isSuccess)
+            {
+                ToggleChangeRoomModal();
+                CloseConfirmationModal();
+                Snackbar.Add("Yêu cầu đổi phòng đã được gửi!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Gửi yêu cầu thất bại. Vui lòng thử lại!", Severity.Error);
+            }
+        }
+        else
+        {
+            Snackbar.Add("Bạn cần chọn phòng mới và nhập lý do!", Severity.Warning);
+        }
+    }
+}

@@ -1,0 +1,216 @@
+﻿@page "/baocaosuco"
+@inject IThongBaoServices ThongBaoServices
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>BÁO CÁO SỰ CỐ</PageTitle>
+
+<h3>BÁO CÁO SỰ CỐ</h3>
+<label> - Đây là nơi mà bạn có thể báo cáo những sự cố về cơ sở vật chất của phòng ký túc xá!</label>
+<br />
+<br />
+
+<div class="modal-overlay">
+    <div class="modal-content">
+        <textarea @bind="noidung" placeholder="Mô tả sự cố của bạn cho chúng tôi!" style="width: 100%; height: 150px; border: 2px solid #007bff;"></textarea>
+    </div>
+
+    <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles">
+        <ActivatorContent>
+            <MudFab Color="Color.Success" StartIcon="@Icons.Material.Filled.AttachFile" />
+        </ActivatorContent>
+    </MudFileUpload>
+
+    <div class="modal-buttons">
+        <MudButton Variant="Variant.Filled" @onclick="xacnhan" Color="Color.Primary">Gửi</MudButton>
+        <MudSnackbarProvider />
+    </div>
+</div>
+
+@if (_files != null && _files.Count > 0)
+{
+    <MudText Typo="@Typo.h6">@_files.Count() File@(_files.Count() == 1 ? "" : "s"):</MudText>
+    <MudList T="string">
+        @foreach (var file in _files)
+        {
+            <MudListItem Icon="@Icons.Material.Filled.AttachFile" @key="@file.Name">
+                @file.Name <code>@file.Size bytes</code>
+                <img src="/image/@file.Name" alt="Hình ảnh sự cố" style="max-width: 100px; max-height: 100px; margin-left: 10px; cursor: pointer;" @onclick="() => OpenImageModal(file.Name)" />
+            </MudListItem>
+        }
+    </MudList>
+}
+
+<MudButton Variant="Variant.Outlined" @onclick="XemLichSuSuCo" Color="Color.Secondary">Xem Lịch Sử Sự Cố</MudButton>
+<br />
+@if (showLichSuSuCo)
+{
+    <h4>LỊCH SỬ SỰ CỐ</h4>
+    @if (lichSuSuCo != null && lichSuSuCo.Any())
+    {
+        <MudTable Items="lichSuSuCo" Striped="true">
+            <HeaderContent>
+                <MudTh>Nội dung</MudTh>
+                <MudTh>Thời gian</MudTh>
+                <MudTh>Trạng thái</MudTh>
+                <MudTh>Hình ảnh</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.NoiDung</MudTd>
+                <MudTd>@context.ThoiGianThongBao?.ToString("dd/MM/yyyy HH:mm")</MudTd>
+                <MudTd>@(context.TrangThaiThongBao == true ? "Đã xử lí" : "Chưa xử lí")</MudTd>
+                <MudTd>
+                    @if (context.HinhAnh != null && context.HinhAnh.Count > 0)
+                    {
+                        foreach (var img in context.HinhAnh)
+                        {
+                            if (!string.IsNullOrEmpty(img))
+                            {
+                                <img src="@img" alt="Hình ảnh sự cố" style="max-width: 100px; margin-right: 5px; cursor: pointer;" @onclick="() => OpenImageModal(img)" />
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <p>Không có hình ảnh nào được đính kèm.</p>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+    else
+    {
+        <p>Không có sự cố nào đã gửi.</p>
+    }
+}
+
+@if (isImageModalOpen)
+{
+    <div class="image-modal" @onclick="CloseImageModal">
+        <img src="@("/image/" + currentImage)" alt="Hình ảnh lớn" style="max-width: 90%; max-height: 90%;" />
+    </div>
+}
+
+@code {
+    private ThongBao thongbao { get; set; } = new ThongBao();
+
+    private string noidung = "";
+    private IList<IBrowserFile> _files = new List<IBrowserFile>();
+    private List<ThongBao> lichSuSuCo = new List<ThongBao>(); // Danh sách lịch sử sự cố
+    private bool showLichSuSuCo = false; // Biến điều khiển hiển thị lịch sử
+    private bool isImageModalOpen = false; // Biến điều khiển hiển thị modal hình ảnh
+    private string currentImage = string.Empty; // Tên tệp hình ảnh hiện tại
+
+    protected override async Task OnInitializedAsync()
+    {
+        string userId = "d6096885-7976-43bb-ad25-d93d9420af7d"; // Thay thế bằng ID người dùng thực tế
+        lichSuSuCo = await ThongBaoServices.GetLichSuSuCoByUserIdAsync(userId);
+    }
+
+    private async Task xacnhan()
+    {
+        if (string.IsNullOrWhiteSpace(noidung) && !_files.Any())
+        {
+            Snackbar.Add("Vui lòng nhập nội dung hoặc tải lên tệp!", Severity.Warning);
+            return;
+        }
+        Snackbar.Add("Báo cáo sự cố đã được gửi đi!", Severity.Success);
+        thongbao.MaThongBao = Guid.NewGuid().ToString();
+        thongbao.NoiDung = "Sự cố: " + noidung;
+        thongbao.ThoiGianThongBao = DateTime.Now;
+        thongbao.TrangThaiThongBao = false;
+        thongbao.LoaiThongBao = "Sự cố";
+        thongbao.Iduser = "d6096885-7976-43bb-ad25-d93d9420af7d";
+
+        // Lưu các hình ảnh vào danh sách
+        thongbao.HinhAnh = _files.Select(file => "/image/" + file.Name).ToList();
+
+        // Thực hiện logic lưu dữ liệu ở đây
+        await ThongBaoServices.AddThongBaoAsync(thongbao);
+
+        // Reset form
+        noidung = "";
+        _files.Clear(); // Xóa danh sách tệp đã tải lên
+    }
+
+    private void UploadFiles(IBrowserFile file)
+    {
+        // Kiểm tra phần mở rộng tệp
+        var extension = Path.GetExtension(file.Name).ToLower();
+        if (extension == ".png" || extension == ".jpg" || extension == ".jpeg") // Chỉ cho phép hình ảnh
+        {
+            _files.Add(file);
+            SaveFileAsync(file);
+        }
+        else
+        {
+            Snackbar.Add("Chỉ hỗ trợ tệp hình ảnh (PNG, JPG, JPEG)!", Severity.Error);
+        }
+    }
+
+    private async Task SaveFileAsync(IBrowserFile file)
+    {
+        var uploadDir = Path.Combine("wwwroot/image");
+
+        // Tạo thư mục nếu chưa tồn tại
+        if (!Directory.Exists(uploadDir))
+        {
+            Directory.CreateDirectory(uploadDir);
+        }
+
+        var filePath = Path.Combine(uploadDir, file.Name);
+        using var stream = file.OpenReadStream();
+        using var fileStream = new FileStream(filePath, FileMode.Create);
+        await stream.CopyToAsync(fileStream);
+
+        // Log để kiểm tra
+        Console.WriteLine($"Đã lưu tệp tại: {filePath}");
+    }
+
+    private void XemLichSuSuCo()
+    {
+        showLichSuSuCo = !showLichSuSuCo; // Đảo ngược giá trị biến điều khiển hiển thị
+    }
+
+    private void OpenImageModal(string imageName)
+    {
+        currentImage = imageName; // Lưu tên tệp hình ảnh
+        isImageModalOpen = true; // Mở modal
+    }
+
+    private void CloseImageModal()
+    {
+        isImageModalOpen = false; // Đóng modal
+    }
+}
+
+<style>
+    .modal-content {
+        display: flex;
+        flex-direction: column; /* Đặt các phần tử theo chiều dọc */
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: flex-end; /* Đẩy nút sang bên phải */
+        margin-top: 10px; /* Khoảng cách giữa textarea và nút */
+    }
+
+    .image-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000; /* Đảm bảo modal hiển thị trên cùng */
+    }
+
+    .image-modal img {
+        max-width: 90%;
+        max-height: 90%;
+    }
+</style>
